@@ -521,7 +521,10 @@ void FlipX(int idx)
 
 void Transform(LifeState* state, int dx, int dy, int dxx, int dxy, int dyx, int dyy)
 {
-	ClearData(Temp);
+	ClearData(Temp2);
+	ClearData(Temp1);
+	Copy(Temp1, state);
+	Move(Temp1, dx, dy);
 	
 	for(int i = 0; i < N; i++)
 	{
@@ -533,15 +536,13 @@ void Transform(LifeState* state, int dx, int dy, int dxx, int dxy, int dyx, int 
 			int x1 = x * dxx + y * dxy;
 			int y1 = x * dyx + y * dyy;
 			
-			int val = GetCell(state, x1, y1);
+			int val = GetCell(Temp1, x1, y1);
 			
-			SetCell(Temp, x, y, val);
+			SetCell(Temp2, x, y, val);
 		}
 	}
 	
-	
-	Copy(state, Temp);
-	Move(state, dx, dy);
+	Copy(state, Temp2);
 	RecalculateMinMax(state);
 }
 
@@ -1350,10 +1351,10 @@ void PutState(int idx)
 
 void PutState(LifeState* state, int dx, int dy, int dxx, int dxy, int dyx, int dyy)
 {
-	ClearData(Temp1);
-	Copy(Temp1, state);
-	Transform(Temp1, dx, dy, dxx, dxy, dyx, dyy);
-	PutState(Temp1);
+	ClearData(Temp);
+	Copy(Temp, state);
+	Transform(Temp, dx, dy, dxx, dxy, dyx, dyy);
+	PutState(Temp);
 }
 
 void PutState(LifeState* state, CopyType op)
