@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <omp.h> 
 
 #define N 64
 #define CAPTURE_COUNT 10 
@@ -105,22 +104,11 @@ typedef struct
 	
 } LifeState;
 
-inline uint64_t CirculateLeft(uint64_t x);
-inline uint64_t CirculateRight(uint64_t x);
-
 static LifeState* GlobalState;
-#pragma omp threadprivate(GlobalState)
-
-
 static LifeState* Captures[CAPTURE_COUNT];
-#pragma omp threadprivate(Captures)
-
-
 static LifeState* Temp, *Temp1, *Temp2;
-#pragma omp threadprivate(Temp, Temp1, Temp2)
 
-inline uint64_t CirculateLeft(uint64_t x)
-{
+inline uint64_t CirculateLeft(uint64_t x){
 	return (x << 1) | (x >> (63));
 }
 
@@ -421,6 +409,43 @@ int Contains(LifeState* main, LifeState* spark)
 	return YES;
 }
 
+int AreDisjoint(LifeState* main, LifeState* pat, int targetDx, int targetDy)
+{
+	int min = pat->min;
+	int max = pat->max;
+	uint64_t * patState = pat->state;
+	uint64_t * mainState = main->state;
+	int dy = (targetDy + 64) % 64;
+	
+	for(int i = min; i <= max; i++)
+	{
+		int curX = (N + i + targetDx) % N; 
+		
+		if(((~CirculateRight(mainState[curX], dy)) & patState[i]) != patState[i])
+			return NO;
+	}
+
+	return YES;
+}
+
+int Contains(LifeState* main, LifeState* spark, int targetDx, int targetDy)
+{
+	int min = spark->min;
+	int max = spark->max;
+	
+	uint64_t * mainState = main->state;
+	uint64_t * sparkState = spark->state;
+	int dy = (targetDy + 64) % 64;
+	
+	for(int i = min; i <= max; i++)
+	{
+		int curX = (N + i + targetDx) % N; 
+		
+		if((CirculateRight(mainState[curX], dy) & sparkState[i]) != (sparkState[i]))
+			return NO;
+	}		
+	return YES;
+}
 
 int AllOn(LifeState* spark)
 {
@@ -726,6 +751,14 @@ LifeTarget* NewTarget(const char* rle)
 	return NewTarget(rle, 0, 0);
 }
 
+int Contains(LifeState* state, LifeTarget* target, int dx, int dy)
+{
+	if(Contains(state, target->wanted, dx, dy) == YES && AreDisjoint(state, target->unwanted, dx, dy) == YES)
+		return YES;
+	else
+		return NO;
+}
+
 int Contains(LifeState* state, LifeTarget* target)
 {
 	if(Contains(state, target->wanted) == YES && AreDisjoint(state, target->unwanted) == YES)
@@ -920,7 +953,6 @@ TargetLocator* NewTargetLocator(const char* rle, int x, int y)
 	return result;
 }
 
-
 uint64_t LocateAtX(LifeState* state, TargetLocator* targetLocator, int x)
 {
 	return LocateAtX(state, targetLocator->onLocator, targetLocator->offLocator,  x);
@@ -942,7 +974,6 @@ void LocateTarget(TargetLocator* targetLocator, LifeState* result)
 }
 
 static TargetLocator* _glidersTarget[4];
-#pragma omp threadprivate(_glidersTarget)
 
 int RemoveAtX(LifeState *state, int x, int startGiderIdx)
 {
@@ -1588,69 +1619,41 @@ void SetCurrent(LifeIterator* iter, int curx, int cury, int curs)
 
 int Validate(LifeIterator *iter1, LifeIterator *iter2)
 {
-	if(!(iter1->curx >= iter2->x && iter1->curx < iter2->x + iter2->w))
+	if(iter1->curx > iter2->curx)
 		return SUCCESS;
 	
-	if(!(iter1->cury >= iter2->y && iter1->cury < iter2->y + iter2->h))
+	if(iter1->curx < iter2->curx)
+		return FAIL;
+	
+	if(iter1->cury > iter2->cury)
+		return SUCCESS;
+	
+	if(iter1->cury < iter2->cury)
+		return FAIL;
+		
+	if(iter1->curs > iter2->curs)
 		return SUCCESS;
 		
-	if(!(iter2->curx >= iter1->x && iter2->curx < iter1->x + iter1->w))
-		return SUCCESS;
+	return FAIL;
+}
+
+int Validate(LifeIterator *iter1, LifeIterator *iter2, LifeIterator *iter3)
+{
+	if(Validate(iter1, iter2) == FAIL)
+		return FAIL;
 	
-	if(!(iter2->cury >= iter1->y && iter2->cury < iter1->y + iter1->h))
-		return SUCCESS;
-		
-	if(iter1->curx != iter2->curx)
-	{
-		if((iter1->curx + iter2->curx) % 2 == 0)
-		{
-			if(iter1->curx > iter2->curx)
-				return SUCCESS;
-			else
-				return FAIL;
-		}
-		else
-		{
-			if(iter1->curx > iter2->curx)
-				return FAIL;
-			else
-				return SUCCESS;
-		}
-	}
+	if(Validate(iter2, iter3) == FAIL)
+		return FAIL;
 	
-	if(iter1->cury != iter2->cury)
-	{
-		if((iter1->cury + iter2->cury) % 2 == 0)
-		{
-			if(iter1->cury > iter2->cury)
-				return SUCCESS;
-			else
-				return FAIL;
-		}
-		else
-		{
-			if(iter1->cury > iter2->cury)
-				return FAIL;
-			else
-				return SUCCESS;
-		}
-	}
-	
-	if((iter1->curs + iter2->curs) % 2 == 0)
-	{
-		if(iter1->curs > iter2->curs)
-			return SUCCESS;
-		else
+	return SUCCESS;
+}
+
+int Validate(LifeIterator *iters[], int iterCount)
+{
+	for(int i = 0; i < iterCount - 1; i++)
+		if(Validate(iters[i], iters[i + 1]) == FAIL)
 			return FAIL;
-	}
-	else
-	{
-		if(iter1->curs > iter2->curs)
-			return FAIL;
-		else
-			return SUCCESS;
-	}
-	
+			
 	return SUCCESS;
 }
 

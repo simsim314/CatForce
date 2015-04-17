@@ -7,28 +7,22 @@ int main (int argc, char *argv[])
 printf("x = 0, y = 0, rule = B3/S23\n");
 clock_t begin = clock();
 
-#pragma omp parallel
-{
 	New();
    
    LifeState* blck =  NewState("2o$2o!");
-   
    LifeState* pat =  NewState("b3o$bo$3o!");
    //LifeState* pat =  NewState("6b3o$6bo$5b3o15$2o$2o7b2o3b2o$9b2o3b2o!", -5, 0);
 
-   int numIters = 4;
+   int numIters = 2;
    
    LifeIterator *iters[numIters];
    LifeTarget* target = NewTarget(blck);
    int activated[numIters];
    
-   
 	for(int i = 0; i < numIters; i++)
-		iters[i] = NewIterator(blck, -8, -2, 32, 24);
+		iters[i] = NewIterator(blck, -10, -10, 20, 20);
 	
    do{
-    #pragma omp single nowait
-	{
 		int valid = Validate(iters, numIters); 
 		
 		if(valid == YES)
@@ -124,8 +118,7 @@ clock_t begin = clock();
 							}
 
 							PutState(pat);
-								
-							#pragma omp critical
+
 							{
 								printf(GetRLE(GlobalState));
 								printf("100$");
@@ -137,10 +130,8 @@ clock_t begin = clock();
 				}
 			}
 		}
-	}
    }while(Next(iters, numIters, NO));
 
-}
 	printf("!");
 	printf("\n\nFINISH");
 	clock_t end = clock();
