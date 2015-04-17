@@ -1,8 +1,73 @@
 #include "LifeAPI.h"
 #include <time.h>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <fstream>
+
+void split(const std::string &s, char delim, std::vector<std::string> &elems) {
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+}
+
+std::string line;
+
+class CatalystInput
+{
+public:
+
+	std::string rle;
+	int maxDesapear; 
+	int centerX; 
+	int centerY;
+	char symmType; 
+	
+	CatalystInput(std::string line)
+	{
+		std::vector<std::string> elems; 
+		split(line, ' ', elems);
+		
+		if(elems.size() != 5)
+		{
+			std::cout << "The line " << line << "is invalid" << std::endl;
+			std::cout << "Format: <rle> <absense interval> <centerX> <centerY> <symm Type x + * - | \ />" << std::endl;
+			getchar();
+			exit(0);
+		}
+		
+		rle = elems[0];
+		maxDesapear = atoi(elems[1].c_str());
+		centerX = atoi(elems[2].c_str());
+		centerY = atoi(elems[3].c_str());
+		symmType = elems[4].at(0);
+	}
+	
+	void Print()
+	{
+		std::cout << rle << " " << maxDesapear << " " << centerX << " " << centerY << " " << symmType << std::endl;
+	}
+};	
+
+void ReadCatalyst(std::string fname, std::vector<CatalystInput>& catalysts)
+{
+	std::ifstream infile;
+	infile.open(fname.c_str(), std::ifstream::in);
+
+	while (std::getline(infile, line))
+	{
+		catalysts.push_back(CatalystInput(line));
+	}
+}
 
 int main (int argc, char *argv[]) 
 {
+	CatalystInput cat(std::string("2o$2o! 5 0 0 x"));
+	cat.Print();
+	getchar();
 	
 printf("x = 0, y = 0, rule = B3/S23\n");
 clock_t begin = clock();
@@ -21,7 +86,7 @@ clock_t begin = clock();
    
 	for(int i = 0; i < numIters; i++)
 		iters[i] = NewIterator(blck, -10, -10, 20, 20);
-	
+
    do{
 		int valid = Validate(iters, numIters); 
 		
