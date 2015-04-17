@@ -65,12 +65,8 @@ void ReadCatalyst(std::string fname, std::vector<CatalystInput>& catalysts)
 
 int main (int argc, char *argv[]) 
 {
-	CatalystInput cat(std::string("2o$2o! 5 0 0 x"));
-	cat.Print();
-	getchar();
-	
-printf("x = 0, y = 0, rule = B3/S23\n");
-clock_t begin = clock();
+	printf("x = 0, y = 0, rule = B3/S23\n");
+	clock_t begin = clock();
 
 	New();
    
