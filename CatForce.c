@@ -258,6 +258,8 @@ int main (int argc, char *argv[])
 	for(int i = 0; i < states.size(); i++)
 		targets.push_back(NewTarget(states[i]));
 		
+	std::vector<int[64][64]> data; 
+	
 	int activated[numIters];
 	int absentCount[numIters];
 
@@ -267,117 +269,155 @@ int main (int argc, char *argv[])
 	for(int i = 0; i < numIters; i++)
 		iters[i] = NewIterator(statesArr, params.searchArea[0], params.searchArea[1], params.searchArea[2], params.searchArea[3], states.size());
 	
+	clock_t current = clock();
+	int idx = 0; 
+	int found = 0; 
+	long total = 0; 
+	
+	do{
+		int valid = Validate(iters, numIters); 
+		if(valid == NO)
+			continue;
+		
+		total++;
+	}while(Next(iters, numIters, NO));
+	
+	std::cout << "Total Checks: " << total << std::endl;
+	
+	total = total / 1000000;
+	
+	if(total == 0)
+		total++;
+		
 	do{
 		int valid = Validate(iters, numIters); 
 		
-		if(valid == YES)
+		if(valid == NO)
+			continue;
+			
+		idx++; 
+		
+		if(idx % 1000000 == 0)
 		{
-			New();
-			
-			for(int i = 0; i < numIters; i++)
-				PutState(iters[i]);
-			
-			Run(1);
-
-			int collide = NO;
-			
-			for(int i = 0; i < numIters; i++)
+			if((double)(clock() - current) / CLOCKS_PER_SEC > 5)
 			{
-				if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
-				{
-					collide = YES;
-					break;
-				}
-			}
-
-			if(collide == YES)
-				continue;
-		
-
-			PutState(pat);
-			
-			for(int i = 0; i < numIters; i++)
-			{
-				if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
-				{
-					collide = YES;
-					break;
-				}
-			}
-						
-			if(collide == YES)
-				continue;
-		
-			for(int i = 0; i < numIters; i++)
-			{
-				activated[i] = NO;
-				absentCount[i] = 0;
-			}
-			
-			int surviveCount = 0;
-			
-			for(int i = 0; i < params.maxGen; i++)
-			{
-				Run(1);			
-				bool fail = false;
-
-				for(int j = 0; j < numIters; j++)
-				{
-					if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) == NO)
-					{
-						activated[j] = YES;
-						absentCount[j]++;
-						
-						if(absentCount[j] > maxSurvive[iters[j]->curs])
-						{
-							fail = true;
-							break;
-						}
-					}
-					else
-					{
-						absentCount[j] = 0;
-					}
-				}		
+				current = clock();
+				std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << std::endl;
 				
-				if(fail)
-					break;
+				std::ofstream resultsFile("results.rle");
+				resultsFile << result;
+				resultsFile.close();
+				
+			}
+		}
+		
+		New();
+		
+		for(int i = 0; i < numIters; i++)
+			PutState(iters[i]);
+		
+		Run(1);
+
+		int collide = NO;
+		
+		for(int i = 0; i < numIters; i++)
+		{
+			if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
+			{
+				collide = YES;
+				break;
+			}
+		}
+
+		if(collide == YES)
+			continue;
+	
+
+		PutState(pat);
+		
+		for(int i = 0; i < numIters; i++)
+		{
+			if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
+			{
+				collide = YES;
+				break;
+			}
+		}
 					
-				int isAllActivated = YES;
-				
-				for(int j = 0; j < numIters; j++)
-				{	
-					if(activated[j] == NO || absentCount[j] != 0)
+		if(collide == YES)
+			continue;
+	
+		for(int i = 0; i < numIters; i++)
+		{
+			activated[i] = NO;
+			absentCount[i] = 0;
+		}
+		
+		int surviveCount = 0;
+		
+		for(int i = 0; i < params.maxGen; i++)
+		{
+			Run(1);			
+			bool fail = false;
+
+			for(int j = 0; j < numIters; j++)
+			{
+				if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) == NO)
+				{
+					activated[j] = YES;
+					absentCount[j]++;
+					
+					if(absentCount[j] > maxSurvive[iters[j]->curs])
 					{
-						isAllActivated = NO;
+						fail = true;
 						break;
 					}
 				}
-				
-				if(isAllActivated == YES)
-					surviveCount++;
 				else
-					surviveCount = 0;
-				
-				if(surviveCount >= params.stableInterval)
 				{
-					New();
-						
-					for(int j = 0; j < numIters; j++)
-					{
-						PutState(iters[j]);
-					}
-					
-					PutState(pat);
-					result.append(GetRLE(GlobalState));
-					result.append("100$");
-					
+					absentCount[j] = 0;
+				}
+			}		
+			
+			if(fail)
+				break;
+				
+			int isAllActivated = YES;
+			
+			for(int j = 0; j < numIters; j++)
+			{	
+				if(activated[j] == NO || absentCount[j] != 0)
+				{
+					isAllActivated = NO;
 					break;
 				}
+			}
+			
+			if(isAllActivated == YES)
+				surviveCount++;
+			else
+				surviveCount = 0;
+			
+			if(surviveCount >= params.stableInterval)
+			{
+				New();
+					
+				for(int j = 0; j < numIters; j++)
+				{
+					PutState(iters[j]);
+				}
+				
+				PutState(pat);
+				result.append(GetRLE(GlobalState));
+				result.append("100$");
+				found++;
+				
+				break;
 			}
 		}
 	}while(Next(iters, numIters, NO));
 	
+	std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << std::endl;
 	std::ofstream resultsFile("results.rle");
     resultsFile << result;
     resultsFile.close();

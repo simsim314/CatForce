@@ -1,8 +1,7 @@
 max-gen 100
 num-catalyst 2
-stable-interval 30
-search-area -8 -8 20 20
-pat 3o$obo$3o! -1 -1
+stable-interval 10
+search-area -8 -8 16 16
+pat 2bo$bobo$o3bo$o3bo$o3bo$bobo$2bo! -3 -4
 cat 2o$2o 60 0 0 .
-cat 2b2o$3bo$3o$o 5 -2 -2 *
-
+cat 2b2o$3bo$3o$o 10 -2 -2 *
