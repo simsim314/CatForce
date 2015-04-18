@@ -34,7 +34,7 @@ public:
 		if(elems.size() != 5)
 		{
 			std::cout << "The line " << line << "is invalid" << std::endl;
-			std::cout << "Format: <rle> <absense interval> <centerX> <centerY> <symm Type x + * - | \ />" << std::endl;
+			std::cout << "Format: <rle> <absense interval> <centerX> <centerY> <symm Type | + / x *>" << std::endl;
 			getchar();
 			exit(0);
 		}
@@ -52,6 +52,64 @@ public:
 	}
 };	
 
+void CharToTransVec(char ch, std::vector<int* >& trans)
+{
+	int none[] = {1, 0, 0, 1};
+	int flipX[] = {-1, 0, 0, 1};
+	int flipY[] = {1, 0, 0, -1};
+	int flipXY[] = {-1, 0, 0, -1};
+	
+	int rot90clock[] = {0, 1, -1, 0};
+	int rot90anti[] = {0, -1, 1, 0};
+	int symmXY[] = {0, 1, 1, 0};
+	int symmYX[] = {0, -1, -1, 0};
+	
+	trans.push_back(none);
+	
+	if(ch == '.')
+		return;
+		
+	if(ch == '|')
+	{
+		trans.push_back(flipX);
+		return;
+	}
+	
+	if(ch == '+')
+	{
+		trans.push_back(flipX);
+		trans.push_back(flipY);
+		trans.push_back(flipXY);
+		return;
+	}
+	
+	if(ch == '/')
+	{
+		trans.push_back(symmXY);
+		return;
+	}
+	
+	if(ch == 'x')
+	{
+		trans.push_back(symmYX);
+		trans.push_back(rot90anti);
+		trans.push_back(rot90clock);
+		return;
+	}
+	
+	if(ch == '*')
+	{
+	trans.push_back(flipX);
+		trans.push_back(flipY);
+		trans.push_back(flipXY);
+		trans.push_back(symmYX);
+		trans.push_back(symmXY);
+		trans.push_back(rot90anti);
+		trans.push_back(rot90clock);
+		return;
+	}
+}
+
 void ReadCatalyst(std::string fname, std::vector<CatalystInput>& catalysts)
 {
 	std::ifstream infile;
@@ -63,27 +121,71 @@ void ReadCatalyst(std::string fname, std::vector<CatalystInput>& catalysts)
 	}
 }
 
+void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<LifeState*>& states)
+{
+	for(int i = 0; i < catalysts.size(); i++)
+	{
+		std::vector<int* > trans;
+		CharToTransVec(catalysts[i].symmType, trans);
+		
+		
+		const char *rle = catalysts[i].rle.c_str();
+		int dx = catalysts[i].centerX;
+		int dy = catalysts[i].centerY;
+		for(int j = 0; j < trans.size(); j++)
+		{
+			int dxx = trans[j][0];
+			int dxy = trans[j][1];
+			int dyx = trans[j][2];
+			int dyy = trans[j][3];
+
+			states.push_back(NewState(rle, dx, dy, dxx, dxy, dyx, dyy));
+		}
+			
+	}
+}
+
+void InitCatalysts(std::string fname, std::vector<LifeState*>& states)
+{
+	std::vector<CatalystInput> catalysts;
+	ReadCatalyst(fname, catalysts);
+	GenerateStates(catalysts, states);
+} 
+
 int main (int argc, char *argv[]) 
 {
+
 	printf("x = 0, y = 0, rule = B3/S23\n");
 	clock_t begin = clock();
 
 	New();
    
-   LifeState* blck =  NewState("2o$2o!");
-   LifeState* pat =  NewState("b3o$bo$3o!");
-   //LifeState* pat =  NewState("6b3o$6bo$5b3o15$2o$2o7b2o3b2o$9b2o3b2o!", -5, 0);
+	//LifeState* blck =  NewState("2o$2o!");
+	std::vector<LifeState*> states;
+	
+	InitCatalysts("1.in", states);
+	LifeState* pat =  NewState("b3o$bo$3o!");
+	//LifeState* pat =  NewState("6b3o$6bo$5b3o15$2o$2o7b2o3b2o$9b2o3b2o!", -5, 0);
 
-   int numIters = 2;
-   
-   LifeIterator *iters[numIters];
-   LifeTarget* target = NewTarget(blck);
-   int activated[numIters];
-   
+	int numIters = 2;
+
+	LifeIterator *iters[numIters];
+	
+	std::vector<LifeTarget*> targets;
+	
+	for(int i = 0; i < states.size(); i++)
+		targets.push_back(NewTarget(states[i]));
+		
+	//LifeTarget* target = NewTarget(blck);
+	int activated[numIters];
+
+	LifeState* statesArr[states.size()];
+	std::copy(states.begin(), states.end(), statesArr);
+	
 	for(int i = 0; i < numIters; i++)
-		iters[i] = NewIterator(blck, -10, -10, 20, 20);
-
-   do{
+		iters[i] = NewIterator(statesArr, -10, -10, 20, 20, states.size());
+	
+	do{
 		int valid = Validate(iters, numIters); 
 		
 		if(valid == YES)
@@ -101,20 +203,20 @@ int main (int argc, char *argv[])
 			
 			for(int i = 0; i < numIters; i++)
 			{
-				if(Contains(GlobalState, target, iters[i]->curx, iters[i]->cury) == NO)
+				if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
 				{
 					collide = YES;
 					break;
 				}
 			}
-			
+
 			if(collide == NO)
 			{
 				PutState(pat);
 				
 				for(int i = 0; i < numIters; i++)
 				{
-					if(Contains(GlobalState, target, iters[i]->curx, iters[i]->cury) == NO)
+					if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
 					{
 						collide = YES;
 						break;
@@ -131,15 +233,17 @@ int main (int argc, char *argv[])
 				
 				for(int i = 0; i < 250; i++)
 				{
-					Run(1);
+
+					Run(1);			
 					
 					for(int j = 0; j < numIters; j++)
 					{
-						if(Contains(GlobalState, target, iters[j]->curx, iters[j]->cury) == NO)
+						if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) == NO)
 						{
 							activated[j] = YES;
 						}
 					}		
+					
 					
 					int isAllActivated = YES;
 					
@@ -152,13 +256,14 @@ int main (int argc, char *argv[])
 						}
 					}
 					
+					
 					if(isAllActivated == YES)
 					{
 						int survive = YES;
 						
 						for(int j = 0; j < numIters; j++)
 						{
-							if(Contains(GlobalState, target, iters[j]->curx, iters[j]->cury) != YES)
+							if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) != YES)
 							{
 								survive = NO;
 								surviveCount = -1;
@@ -191,7 +296,7 @@ int main (int argc, char *argv[])
 				}
 			}
 		}
-   }while(Next(iters, numIters, NO));
+	}while(Next(iters, numIters, NO));
 
 	printf("!");
 	printf("\n\nFINISH");
