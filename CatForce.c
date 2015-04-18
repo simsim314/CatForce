@@ -1,3 +1,5 @@
+//CatForce - Catalyst search utility based on LifeAPI using brute force. 
+//Written by Michael Simkin 2015
 #include "LifeAPI.h"
 #include <time.h>
 #include <sstream>
