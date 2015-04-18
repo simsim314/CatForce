@@ -7,6 +7,16 @@
 #include <fstream>
 #include <stdexcept>
 
+int none[] = {1, 0, 0, 1};
+int flipX[] = {-1, 0, 0, 1};
+int flipY[] = {1, 0, 0, -1};
+int flipXY[] = {-1, 0, 0, -1};
+
+int rot90clock[] = {0, 1, -1, 0};
+int rot90anti[] = {0, -1, 1, 0};
+int symmXY[] = {0, 1, 1, 0};
+int symmYX[] = {0, -1, -1, 0};
+
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss(s);
     std::string item;
@@ -22,6 +32,9 @@ public:
 	int numCatalysts; 
 	int stableInterval;
 	std::string pat;
+	int xPat;
+	int yPat;
+	
 	int searchArea[4];
 	
 	SearchParams()
@@ -34,7 +47,8 @@ public:
 		searchArea[1] = 0;
 		searchArea[2] = 20;
 		searchArea[3] = 20;
-		
+		xPat = 0;
+		yPat = 0;
 	}
 };
 
@@ -76,16 +90,6 @@ public:
 
 void CharToTransVec(char ch, std::vector<int* >& trans)
 {
-	int none[] = {1, 0, 0, 1};
-	int flipX[] = {-1, 0, 0, 1};
-	int flipY[] = {1, 0, 0, -1};
-	int flipXY[] = {-1, 0, 0, -1};
-	
-	int rot90clock[] = {0, 1, -1, 0};
-	int rot90anti[] = {0, -1, 1, 0};
-	int symmXY[] = {0, 1, 1, 0};
-	int symmYX[] = {0, -1, -1, 0};
-	
 	trans.push_back(none);
 	
 	if(ch == '.')
@@ -121,7 +125,7 @@ void CharToTransVec(char ch, std::vector<int* >& trans)
 	
 	if(ch == '*')
 	{
-	trans.push_back(flipX);
+		trans.push_back(flipX);
 		trans.push_back(flipY);
 		trans.push_back(flipXY);
 		trans.push_back(symmYX);
@@ -168,7 +172,15 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 				params.stableInterval = atoi(elems[1].c_str());
 				
 			if(elems[0] == pat) 
+			{
 				params.pat = elems[1];
+				
+				if(elems.size() > 3)
+				{
+					params.xPat =  atoi(elems[2].c_str());
+					params.yPat =  atoi(elems[3].c_str());
+				}
+			}
 				
 			if(elems[0] == area) 
 			{
@@ -202,7 +214,7 @@ void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<Lif
 			int dxy = trans[j][1];
 			int dyx = trans[j][2];
 			int dyy = trans[j][3];
-
+			
 			states.push_back(NewState(rle, dx, dy, dxx, dxy, dyx, dyy));
 			maxSurvive.push_back(maxDesapear);
 		}
@@ -224,7 +236,7 @@ int main (int argc, char *argv[])
 		exit(0);
 	}
 	
-	printf("x = 0, y = 0, rule = B3/S23\n");
+	std::string result = "x = 0, y = 0, rule = B3/S23\n";
 	clock_t begin = clock();
 	
 	New();
@@ -235,7 +247,7 @@ int main (int argc, char *argv[])
 	SearchParams params;
 	InitCatalysts(argv[1], states, maxSurvive, params);
 	
-	LifeState* pat =  NewState(params.pat.c_str());
+	LifeState* pat =  NewState(params.pat.c_str(), params.xPat, params.yPat);
 	
 	int numIters = params.numCatalysts ;
 
@@ -357,15 +369,19 @@ int main (int argc, char *argv[])
 					}
 					
 					PutState(pat);
-					printf(GetRLE(GlobalState));
-					printf("100$");
+					result.append(GetRLE(GlobalState));
+					result.append("100$");
 					
 					break;
 				}
 			}
 		}
 	}while(Next(iters, numIters, NO));
-
+	
+	std::ofstream resultsFile("results.rle");
+    resultsFile << result;
+    resultsFile.close();
+	
 	printf("!");
 	printf("\n\nFINISH\n");
 	clock_t end = clock();
