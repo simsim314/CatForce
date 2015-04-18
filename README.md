@@ -1,5 +1,11 @@
 # CatForce
-GOL catalyst search utility using brute force. Catalyst search utility based on LifeAPI library. 
+GOL Catalyst search utility based on LifeAPI library. 
+
+The main advantage of CatForce is that it doesn't make any assumptions about the nature of the interaction. As long as the catalysts are back in place in given number of generations, they all could be destroyed and reapear several times. 
+
+It uses brute force search in some area instead of tree search (yet few optimizations were added to make sure it works fast). 
+
+Another major advantage of this approach is parallelization (which is much harder to implement in tree depth search). 
 
 Usage
 --
