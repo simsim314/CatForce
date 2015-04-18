@@ -34,7 +34,8 @@ public:
 	std::string pat;
 	int xPat;
 	int yPat;
-	
+	int startGen; 
+	std::string outputFile;
 	int searchArea[4];
 	
 	SearchParams()
@@ -49,6 +50,8 @@ public:
 		searchArea[3] = 20;
 		xPat = 0;
 		yPat = 0;
+		startGen = 1;
+		outputFile = "results.rle";
 	}
 };
 
@@ -143,10 +146,13 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 
 	std::string Cat = "cat";
 	std::string maxGen = "max-gen";
+	std::string startGen = "start-gen";
 	std::string numCat = "num-catalyst";
 	std::string stable = "stable-interval";
 	std::string area = "search-area";
 	std::string pat = "pat";
+	std::string outputFile = "output";
+	
 	std::string line; 
 	
 	while (std::getline(infile, line))
@@ -189,6 +195,21 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 				params.searchArea[2] = atoi(elems[3].c_str());
 				params.searchArea[3] = atoi(elems[4].c_str());
 			}
+			
+			if(elems[0] == startGen) 
+				params.startGen = atoi(elems[1].c_str());
+			
+			if(elems[0] == outputFile) 
+			{
+				params.outputFile = elems[1];
+				
+				for(int i = 2; i < elems.size(); i++)
+				{	
+					params.outputFile.append(" ");
+					params.outputFile.append(elems[i]);
+				}
+			}
+			
 		}
 		catch(const std::exception& ex)
 		{
@@ -252,13 +273,61 @@ int main (int argc, char *argv[])
 	int numIters = params.numCatalysts ;
 
 	LifeIterator *iters[numIters];
-	
+
 	std::vector<LifeTarget*> targets;
 	
 	for(int i = 0; i < states.size(); i++)
 		targets.push_back(NewTarget(states[i]));
 		
-	std::vector<int[64][64]> data; 
+	std::vector<std::vector<std::vector<int> > > statexyGen; 
+	
+	for(int i = 0; i < states.size(); i++)
+	{
+		std::vector<std::vector<int> > xyVec; 
+		
+		for(int x = 0; x < 64; x++)
+		{
+			std::vector<int>  xVec; 
+			
+			for(int y = 0; y < 64; y++)
+			{
+				New();
+				PutState(states[i], x, y);
+				PutState(pat);
+				int j; 
+				
+				for(j = 0; j < params.maxGen + 5; j++)
+				{
+					if(Contains(GlobalState, targets[i], x, y) == NO)
+					{
+						break;
+					}
+					Run(1);
+				}
+				
+				if(j == params.maxGen + 4)
+					j = -1;
+				
+				xVec.push_back(j - 1);
+			}
+			
+			xyVec.push_back(xVec);
+		}
+		
+		statexyGen.push_back(xyVec);
+	}
+	
+	std::vector<LifeState*> preIterated;
+	New();
+	PutState(pat);
+		
+	for(int i = 0; i < params.maxGen + 5; i++)
+	{
+		LifeState* t = NewState();
+		Copy(t, GlobalState);
+		preIterated.push_back(t);
+		Run(1);
+	}
 	
 	int activated[numIters];
 	int absentCount[numIters];
@@ -272,19 +341,22 @@ int main (int argc, char *argv[])
 	clock_t current = clock();
 	int idx = 0; 
 	int found = 0; 
-	long total = 0; 
+	long long total = 1; 
+	long fact = 1;
 	
-	do{
-		int valid = Validate(iters, numIters); 
-		if(valid == NO)
-			continue;
-		
-		total++;
-	}while(Next(iters, numIters, NO));
+	for(int i = 0; i < numIters; i++)
+	{
+		total *= (iters[i] -> w); 
+		total *= (iters[i] -> h); 
+		total *= (iters[i] -> s); 
+		fact *= (i + 1);
+	}
 	
-	std::cout << "Total Checks: " << total << std::endl;
+	total /= fact;
 	
+	std::cout << "Approximated Total: " << total << std::endl;
 	total = total / 1000000;
+	
 	
 	if(total == 0)
 		total++;
@@ -304,13 +376,28 @@ int main (int argc, char *argv[])
 				current = clock();
 				std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << std::endl;
 				
-				std::ofstream resultsFile("results.rle");
+				std::ofstream resultsFile(params.outputFile.c_str());
 				resultsFile << result;
 				resultsFile.close();
 				
 			}
 		}
 		
+		int minIter = 1000000;
+		
+		for(int i = 0; i < numIters; i++)
+		{
+			int startGen = statexyGen[iters[i]->curs][(iters[i]->curx + 64) % 64][(iters[i]->cury + 64) % 64];
+			if(startGen < minIter)
+				minIter = startGen;
+				
+			if(minIter < params.startGen)
+				break;
+		}
+		
+		if(minIter < params.startGen)
+			continue;
+			
 		New();
 		
 		for(int i = 0; i < numIters; i++)
@@ -332,21 +419,8 @@ int main (int argc, char *argv[])
 		if(collide == YES)
 			continue;
 	
-
-		PutState(pat);
+		PutState(preIterated[minIter]);
 		
-		for(int i = 0; i < numIters; i++)
-		{
-			if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
-			{
-				collide = YES;
-				break;
-			}
-		}
-					
-		if(collide == YES)
-			continue;
-	
 		for(int i = 0; i < numIters; i++)
 		{
 			activated[i] = NO;
@@ -355,9 +429,9 @@ int main (int argc, char *argv[])
 		
 		int surviveCount = 0;
 		
-		for(int i = 0; i < params.maxGen; i++)
+		for(int i = minIter; i < params.maxGen; i++)
 		{
-			Run(1);			
+			Run(1);	
 			bool fail = false;
 
 			for(int j = 0; j < numIters; j++)
@@ -417,8 +491,8 @@ int main (int argc, char *argv[])
 		}
 	}while(Next(iters, numIters, NO));
 	
-	std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << std::endl;
-	std::ofstream resultsFile("results.rle");
+	std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << " sec" << std::endl;
+	std::ofstream resultsFile(params.outputFile.c_str());
     resultsFile << result;
     resultsFile.close();
 	

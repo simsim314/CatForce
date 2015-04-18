@@ -1,7 +1,9 @@
 max-gen 100
+start-gen 1
 num-catalyst 3
 stable-interval 10
 search-area -8 -8 16 16
 pat 2bo$bobo$o3bo$o3bo$o3bo$bobo$2bo! -3 -4
 cat 2o$2o 60 0 0 .
 cat 2b2o$3bo$3o$o 10 -2 -2 *
+output 1.rle
