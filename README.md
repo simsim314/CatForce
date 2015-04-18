@@ -37,7 +37,9 @@ For how long all the catalysts should remain untouched (after activation) to be 
 
 `search-area x y w h`
 
-Search area of all catalysts - (x, y) is the starting point (w, h) - width height square. 
+Search area is always rectangular. 
+
+(x, y) is the starting point (w, h) - width height. 
 
 `pat rle dx dy`
 
