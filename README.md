@@ -65,7 +65,7 @@ symmetries-char - character that defines all symmetries the catalyst can be used
 -  |   mirror by y.
 -  +   mirror by x, y and both. 
 -  /  diagonal mirror
--  x  diagonal mirror by both diagonals and rotations clock and anti clock wise. 
+-  x  rotate 90 * k degrees. 
 -  *  All 8 variations of transformations. 
 
 `output <file.rle>`
