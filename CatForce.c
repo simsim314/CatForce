@@ -121,7 +121,7 @@ void ReadCatalyst(std::string fname, std::vector<CatalystInput>& catalysts)
 	}
 }
 
-void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<LifeState*>& states)
+void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<LifeState*>& states, std::vector<int>& maxSurvive)
 {
 	for(int i = 0; i < catalysts.size(); i++)
 	{
@@ -132,6 +132,8 @@ void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<Lif
 		const char *rle = catalysts[i].rle.c_str();
 		int dx = catalysts[i].centerX;
 		int dy = catalysts[i].centerY;
+		int maxDesapear = catalysts[i].maxDesapear;
+		
 		for(int j = 0; j < trans.size(); j++)
 		{
 			int dxx = trans[j][0];
@@ -140,16 +142,16 @@ void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<Lif
 			int dyy = trans[j][3];
 
 			states.push_back(NewState(rle, dx, dy, dxx, dxy, dyx, dyy));
+			maxSurvive.push_back(maxDesapear);
 		}
-			
 	}
 }
 
-void InitCatalysts(std::string fname, std::vector<LifeState*>& states)
+void InitCatalysts(std::string fname, std::vector<LifeState*>& states, std::vector<int>& maxSurvive)
 {
 	std::vector<CatalystInput> catalysts;
 	ReadCatalyst(fname, catalysts);
-	GenerateStates(catalysts, states);
+	GenerateStates(catalysts, states, maxSurvive);
 } 
 
 int main (int argc, char *argv[]) 
@@ -162,12 +164,13 @@ int main (int argc, char *argv[])
    
 	//LifeState* blck =  NewState("2o$2o!");
 	std::vector<LifeState*> states;
+	std::vector<int> maxSurvive;
 	
-	InitCatalysts("1.in", states);
+	InitCatalysts("1.in", states, maxSurvive);
 	LifeState* pat =  NewState("b3o$bo$3o!");
 	//LifeState* pat =  NewState("6b3o$6bo$5b3o15$2o$2o7b2o3b2o$9b2o3b2o!", -5, 0);
 
-	int numIters = 2;
+	int numIters = 3;
 
 	LifeIterator *iters[numIters];
 	
@@ -176,14 +179,14 @@ int main (int argc, char *argv[])
 	for(int i = 0; i < states.size(); i++)
 		targets.push_back(NewTarget(states[i]));
 		
-	//LifeTarget* target = NewTarget(blck);
 	int activated[numIters];
+	int absentCount[numIters];
 
 	LifeState* statesArr[states.size()];
 	std::copy(states.begin(), states.end(), statesArr);
 	
 	for(int i = 0; i < numIters; i++)
-		iters[i] = NewIterator(statesArr, -10, -10, 20, 20, states.size());
+		iters[i] = NewIterator(statesArr, -10, 0, 20, 20, states.size());
 	
 	do{
 		int valid = Validate(iters, numIters); 
@@ -193,10 +196,8 @@ int main (int argc, char *argv[])
 			New();
 			
 			for(int i = 0; i < numIters; i++)
-			{
 				PutState(iters[i]);
-			}
-
+			
 			Run(1);
 
 			int collide = NO;
@@ -210,89 +211,89 @@ int main (int argc, char *argv[])
 				}
 			}
 
-			if(collide == NO)
+			if(collide == YES)
+				continue;
+		
+
+			PutState(pat);
+			
+			for(int i = 0; i < numIters; i++)
 			{
-				PutState(pat);
-				
-				for(int i = 0; i < numIters; i++)
+				if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
 				{
-					if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
+					collide = YES;
+					break;
+				}
+			}
+						
+			if(collide == YES)
+				continue;
+		
+			for(int i = 0; i < numIters; i++)
+			{
+				activated[i] = NO;
+				absentCount[i] = 0;
+			}
+			
+			int surviveCount = 0;
+			
+			for(int i = 0; i < 250; i++)
+			{
+				Run(1);			
+				bool fail = false;
+
+				for(int j = 0; j < numIters; j++)
+				{
+					if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) == NO)
 					{
-						collide = YES;
+						activated[j] = YES;
+						absentCount[j]++;
+						
+						if(absentCount[j] > maxSurvive[iters[j]->curs])
+						{
+							fail = true;
+							break;
+						}
+					}
+					else
+					{
+						absentCount[j] = 0;
+					}
+				}		
+				
+				if(fail)
+					break;
+					
+				int isAllActivated = YES;
+				
+				for(int j = 0; j < numIters; j++)
+				{	
+					if(activated[j] == NO || absentCount[j] != 0)
+					{
+						isAllActivated = NO;
 						break;
 					}
 				}
-			}			
-			
-			if(collide == NO)
-			{ 
-				for(int i = 0; i < numIters; i++)
-					activated[i] = NO;
 				
-				int surviveCount = -1;
+				if(isAllActivated == YES)
+					surviveCount++;
+				else
+					surviveCount = 0;
 				
-				for(int i = 0; i < 250; i++)
+				if(surviveCount > 15)
 				{
-
-					Run(1);			
-					
+					New();
+						
 					for(int j = 0; j < numIters; j++)
 					{
-						if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) == NO)
-						{
-							activated[j] = YES;
-						}
-					}		
-					
-					
-					int isAllActivated = YES;
-					
-					for(int j = 0; j < numIters; j++)
-					{	
-						if(activated[j] == NO)
-						{
-							isAllActivated = NO;
-							break;
-						}
+						PutState(iters[j]);
 					}
 					
+					PutState(pat);
+					printf(GetRLE(GlobalState));
+					printf("100$");
 					
-					if(isAllActivated == YES)
-					{
-						int survive = YES;
-						
-						for(int j = 0; j < numIters; j++)
-						{
-							if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) != YES)
-							{
-								survive = NO;
-								surviveCount = -1;
-								break;
-							}
-						}	
-						
-						if(survive == YES)
-							surviveCount++;
-							
-						if(surviveCount > 15)
-						{
-							New();
-								
-							for(int j = 0; j < numIters; j++)
-							{
-								PutState(iters[j]);
-							}
-
-							PutState(pat);
-
-							{
-								printf(GetRLE(GlobalState));
-								printf("100$");
-							}
-							
-							break;
-						}
-					}
+					break;
 				}
 			}
 		}
