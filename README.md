@@ -56,11 +56,11 @@ max-gen-petrube - the maximal generations that a pattern can be idle. Transparen
 symmetries-char - character that defines all symmetries the catalyst can be used. Currently supports: 
 | + / x *
 
-|  - mirror by y, 
-+  - mirror by x, y and both. 
-/ - diagonal mirror
-x - diagonal mirror by both diagonals and rotations clock and anti clock wise. 
-* - All 8 variations of transformations. 
+-  |   mirror by y.
+-  +   mirror by x, y and both. 
+-  /  diagonal mirror
+-  x  diagonal mirror by both diagonals and rotations clock and anti clock wise. 
+-  *  All 8 variations of transformations. 
 
 `output <file.rle>`
 
