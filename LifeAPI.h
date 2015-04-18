@@ -46,6 +46,17 @@ LifeString* NewString()
 	return result;
 }
 
+void Clear(LifeString* s)
+{
+	if(s == NULL)
+		s = NewString();
+	else
+	{
+		s->value[0] = '\0';
+		s->size = 1;
+	}
+}
+
 void Realloc(LifeString* string)
 {
 	int empty = NO;
@@ -349,10 +360,8 @@ void ClearData(LifeState* state)
 	state -> min = 0;
 	state -> max = N - 1;
 	state->gen = 0;
-	state->emittedGliders = NewString();
+	Clear(state->emittedGliders);
 }
-
-
 
 LifeState* NewState()
 {
