@@ -11,6 +11,8 @@ Technical Details
 
 **.in file format** 
 
+Please see 1.in in the repository for correct usage. 
+
 Notice the delimeter is " " - i.e. space. 
 Don't place "" for strings. Just use them with space delimeter. 
 FileOutput can use spaces in the name - but this is not recommended. 
