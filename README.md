@@ -1,7 +1,10 @@
 # CatForce
 GOL catalyst search utility using brute force space search 
 
+# Usage
 Pass the .in to the CatForce.exe. 
+
+# Technical Details
 
 **.in file format** 
 
