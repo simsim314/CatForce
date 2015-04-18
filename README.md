@@ -1,5 +1,5 @@
 # CatForce
-GOL catalyst search utility using brute force space search 
+GOL catalyst search utility using brute force. Catalyst search utility based on LifeAPI library. 
 
 Usage
 --
