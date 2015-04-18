@@ -65,3 +65,10 @@ symmetries-char - character that defines all symmetries the catalyst can be used
 `output <file.rle>`
 
 output file name. 
+
+Compilation
+--
+
+Compiled using g++. 
+Compile the CatForce as any c++ application with single file. 
+Just make sure you have the latest LifeAPI.h (or the one in the repository) in the same folder. 
