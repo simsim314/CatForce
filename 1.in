@@ -1,1 +1,6 @@
-2o$2o 60 0 0 .
+max-gen 200
+num-catalyst 3
+stable-interval 30
+search-area -10 0 20 20
+pat b3o$bo$3o
+cat 2o$2o 20 0 0 .

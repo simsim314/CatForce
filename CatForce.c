@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss(s);
@@ -14,7 +15,28 @@ void split(const std::string &s, char delim, std::vector<std::string> &elems) {
     }
 }
 
-std::string line;
+class SearchParams
+{
+public:
+	int maxGen;
+	int numCatalysts; 
+	int stableInterval;
+	std::string pat;
+	int searchArea[4];
+	
+	SearchParams()
+	{
+		maxGen = 250;
+		numCatalysts = 2;
+		stableInterval = 15;
+		pat = "";
+		searchArea[0] = -10;
+		searchArea[1] = 0;
+		searchArea[2] = 20;
+		searchArea[3] = 20;
+		
+	}
+};
 
 class CatalystInput
 {
@@ -31,19 +53,19 @@ public:
 		std::vector<std::string> elems; 
 		split(line, ' ', elems);
 		
-		if(elems.size() != 5)
+		if(elems.size() != 6)
 		{
 			std::cout << "The line " << line << "is invalid" << std::endl;
-			std::cout << "Format: <rle> <absense interval> <centerX> <centerY> <symm Type | + / x *>" << std::endl;
+			std::cout << "Format: cat <rle> <absense interval> <centerX> <centerY> <symm Type | + / x *>" << std::endl;
 			getchar();
 			exit(0);
 		}
 		
-		rle = elems[0];
-		maxDesapear = atoi(elems[1].c_str());
-		centerX = atoi(elems[2].c_str());
-		centerY = atoi(elems[3].c_str());
-		symmType = elems[4].at(0);
+		rle = elems[1];
+		maxDesapear = atoi(elems[2].c_str());
+		centerX = atoi(elems[3].c_str());
+		centerY = atoi(elems[4].c_str());
+		symmType = elems[5].at(0);
 	}
 	
 	void Print()
@@ -110,14 +132,55 @@ void CharToTransVec(char ch, std::vector<int* >& trans)
 	}
 }
 
-void ReadCatalyst(std::string fname, std::vector<CatalystInput>& catalysts)
+void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, SearchParams& params)
 {
 	std::ifstream infile;
 	infile.open(fname.c_str(), std::ifstream::in);
 
+	std::string Cat = "cat";
+	std::string maxGen = "max-gen";
+	std::string numCat = "num-catalyst";
+	std::string stable = "stable-interval";
+	std::string area = "search-area";
+	std::string pat = "pat";
+	std::string line; 
+	
 	while (std::getline(infile, line))
 	{
-		catalysts.push_back(CatalystInput(line));
+		try
+		{
+			std::vector<std::string> elems;
+			split(line, ' ', elems);
+			
+			if(elems.size() < 2)
+				continue; 
+				
+			if(elems[0] == Cat) 
+				catalysts.push_back(CatalystInput(line));
+			
+			if(elems[0] == maxGen) 
+				params.maxGen = atoi(elems[1].c_str());
+				
+			if(elems[0] == numCat) 
+				params.numCatalysts = atoi(elems[1].c_str());
+				
+			if(elems[0] == stable) 
+				params.stableInterval = atoi(elems[1].c_str());
+				
+			if(elems[0] == pat) 
+				params.pat = elems[1];
+				
+			if(elems[0] == area) 
+			{
+				params.searchArea[0] = atoi(elems[1].c_str());
+				params.searchArea[1] = atoi(elems[2].c_str());
+				params.searchArea[2] = atoi(elems[3].c_str());
+				params.searchArea[3] = atoi(elems[4].c_str());
+			}
+		}
+		catch(const std::exception& ex)
+		{
+		}
 	}
 }
 
@@ -127,7 +190,6 @@ void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<Lif
 	{
 		std::vector<int* > trans;
 		CharToTransVec(catalysts[i].symmType, trans);
-		
 		
 		const char *rle = catalysts[i].rle.c_str();
 		int dx = catalysts[i].centerX;
@@ -147,30 +209,35 @@ void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<Lif
 	}
 }
 
-void InitCatalysts(std::string fname, std::vector<LifeState*>& states, std::vector<int>& maxSurvive)
+void InitCatalysts(std::string fname, std::vector<LifeState*>& states, std::vector<int>& maxSurvive, SearchParams& params)
 {
 	std::vector<CatalystInput> catalysts;
-	ReadCatalyst(fname, catalysts);
+	ReadParams(fname, catalysts, params);
 	GenerateStates(catalysts, states, maxSurvive);
 } 
 
 int main (int argc, char *argv[]) 
 {
-
+	if(argc < 2)
+	{
+		std::cout << "Usage CatForce.exe <in file>";
+		exit(0);
+	}
+	
 	printf("x = 0, y = 0, rule = B3/S23\n");
 	clock_t begin = clock();
-
+	
 	New();
    
-	//LifeState* blck =  NewState("2o$2o!");
 	std::vector<LifeState*> states;
 	std::vector<int> maxSurvive;
 	
-	InitCatalysts("1.in", states, maxSurvive);
-	LifeState* pat =  NewState("b3o$bo$3o!");
-	//LifeState* pat =  NewState("6b3o$6bo$5b3o15$2o$2o7b2o3b2o$9b2o3b2o!", -5, 0);
-
-	int numIters = 3;
+	SearchParams params;
+	InitCatalysts(argv[1], states, maxSurvive, params);
+	
+	LifeState* pat =  NewState(params.pat.c_str());
+	
+	int numIters = params.numCatalysts ;
 
 	LifeIterator *iters[numIters];
 	
@@ -186,7 +253,7 @@ int main (int argc, char *argv[])
 	std::copy(states.begin(), states.end(), statesArr);
 	
 	for(int i = 0; i < numIters; i++)
-		iters[i] = NewIterator(statesArr, -10, 0, 20, 20, states.size());
+		iters[i] = NewIterator(statesArr, params.searchArea[0], params.searchArea[1], params.searchArea[2], params.searchArea[3], states.size());
 	
 	do{
 		int valid = Validate(iters, numIters); 
@@ -237,7 +304,7 @@ int main (int argc, char *argv[])
 			
 			int surviveCount = 0;
 			
-			for(int i = 0; i < 250; i++)
+			for(int i = 0; i < params.maxGen; i++)
 			{
 				Run(1);			
 				bool fail = false;
@@ -280,7 +347,7 @@ int main (int argc, char *argv[])
 				else
 					surviveCount = 0;
 				
-				if(surviveCount > 15)
+				if(surviveCount >= params.stableInterval)
 				{
 					New();
 						
@@ -300,7 +367,7 @@ int main (int argc, char *argv[])
 	}while(Next(iters, numIters, NO));
 
 	printf("!");
-	printf("\n\nFINISH");
+	printf("\n\nFINISH\n");
 	clock_t end = clock();
 	printf("Elapsed: %f seconds\n", (double)(end - begin) / CLOCKS_PER_SEC);
 
