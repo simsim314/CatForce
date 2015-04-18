@@ -120,9 +120,9 @@ void CharToTransVec(char ch, std::vector<int* >& trans)
 	
 	if(ch == 'x')
 	{
-		trans.push_back(symmYX);
 		trans.push_back(rot90anti);
 		trans.push_back(rot90clock);
+		trans.push_back(flipXY);
 		return;
 	}
 	
