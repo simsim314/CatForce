@@ -341,7 +341,7 @@ int main (int argc, char *argv[])
 		iters[i] = NewIterator(statesArr, params.searchArea[0], params.searchArea[1], params.searchArea[2], params.searchArea[3], states.size());
 	
 	clock_t current = clock();
-	int idx = 0; 
+	long long idx = 0; 
 	int found = 0; 
 	long long total = 1; 
 	long fact = 1;
@@ -368,7 +368,9 @@ int main (int argc, char *argv[])
 		
 		if(valid == NO)
 			continue;
-			
+		
+		
+		
 		idx++; 
 		
 		if(idx % 1000000 == 0)
