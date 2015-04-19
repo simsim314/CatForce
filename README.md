@@ -12,6 +12,8 @@ Usage
 
 Pass the .in to the CatForce.exe. 
 
+Command Line: CatForce.exe 1.in
+
 Technical Details
 --
 
