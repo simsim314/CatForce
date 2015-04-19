@@ -94,7 +94,9 @@ The main usage of this optimization is to allow many catalysts in small rectangl
 
 `full-report <file name>`
 
-If you want to report all catalysts ignoring the filters into seperate file , specify file name with full-report. 
+If you want to report all valid catalysts ignoring the filters into seperate file.
+
+file name - specify file name for the full-report. 
 
  NOTE: fit-in-width-height optimization will still run and ignore all that don't fit. The difference is that fit-in optimization is pre-calcuation filter, while the usual filter is post-calculation filter, so the report can still be done into seperate place. 
  
