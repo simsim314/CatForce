@@ -74,8 +74,6 @@ symmetries-char - character that defines all symmetries the catalyst can be used
 
 output file name. 
 
-Compilation
-
 `filter gen rle dx dy`
 
 Note: one can use several filters. The filter will be checked if successful catalyst was found. 
@@ -98,6 +96,8 @@ If you want to report all catalysts ignoring the filters into seperate file , sp
  NOTE: fit-in-width-height optimization will still run and ignore all that don't fit. The difference is that fit-in optimization is pre-calcuation filter, while the usual filter is post-calculation filter, so the report can still be done into seperate place. 
  
  If you don't specify this flag the code will ignore it and report only the results after filter. 
+ 
+ Compilation
 --
 
 Compiled using g++. 
