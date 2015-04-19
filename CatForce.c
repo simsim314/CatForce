@@ -38,6 +38,7 @@ public:
 	int yPat;
 	int startGen; 
 	std::string outputFile;
+	std::string fullReportFile;
 	int searchArea[4];
 	int maxW;
 	int maxH;
@@ -62,6 +63,7 @@ public:
 		outputFile = "results.rle";
 		maxW = -1;
 		maxH = -1;
+		fullReportFile = "";
 	}
 };
 
@@ -164,6 +166,7 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 	std::string outputFile = "output";
 	std::string filter = "filter";
 	std::string maxWH = "fit-in-width-height";
+	std::string fullReport = "full-report";
 	
 	std::string line; 
 	
@@ -219,6 +222,17 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 				{	
 					params.outputFile.append(" ");
 					params.outputFile.append(elems[i]);
+				}
+			}
+			
+			if(elems[0] == fullReport) 
+			{
+				params.fullReportFile = elems[1];
+				
+				for(int i = 2; i < elems.size(); i++)
+				{	
+					params.fullReportFile.append(" ");
+					params.fullReportFile.append(elems[i]);
 				}
 			}
 			
@@ -398,6 +412,10 @@ int main (int argc, char *argv[])
 	
 	const bool hasFilter = params.targetFilter.size() > 0;
 	
+	const bool reportAll = params.fullReportFile.length() != 0;
+	std::string fullReport = "x = 0, y = 0, rule = B3/S23\n";
+	
+	const bool hasFilterDontReportAll = hasFilter && !reportAll;
 	int maxGen = -1;
 	
 	for(int j = 0; j < targetFilter.size(); j++)
@@ -454,6 +472,13 @@ int main (int argc, char *argv[])
 				std::ofstream resultsFile(params.outputFile.c_str());
 				resultsFile << result;
 				resultsFile.close();
+				
+				if(reportAll)
+				{
+					std::ofstream allfile(params.fullReportFile.c_str());
+					allfile << fullReport;
+					allfile.close();
+				}
 				
 			}
 		}
@@ -534,7 +559,7 @@ int main (int argc, char *argv[])
 			if(fail)
 				break;
 				
-			if(hasFilter)
+			if(hasFilterDontReportAll)
 			{
 				for(int j = 0; j < targetFilter.size(); j++)
 				{
@@ -610,6 +635,19 @@ int main (int argc, char *argv[])
 					found++;
 				}
 				
+				if(reportAll)
+				{
+					New();
+						
+					for(int j = 0; j < numIters; j++)
+					{
+						PutState(iters[j]);
+					}
+					
+					PutState(pat);
+					fullReport.append(GetRLE(GlobalState));
+					fullReport.append("100$");
+				}
 				break;
 			}
 		}
@@ -619,6 +657,13 @@ int main (int argc, char *argv[])
 	std::ofstream resultsFile(params.outputFile.c_str());
     resultsFile << result;
     resultsFile.close();
+	
+	if(reportAll)
+	{
+		std::ofstream allfile(params.fullReportFile.c_str());
+		allfile << fullReport;
+		allfile.close();
+	}
 	
 	printf("!");
 	printf("\n\nFINISH\n");

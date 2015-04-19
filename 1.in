@@ -10,3 +10,4 @@ fit-in-width-height 20 3
 cat 2o$2o 60 0 0 .
 cat 2b2o$3bo$3o$o 10 -2 -2 *
 output 1.rle
+full-report full.rle
