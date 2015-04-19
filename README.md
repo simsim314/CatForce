@@ -89,6 +89,13 @@ To optimize run time one can choose to check only catalysts bounded by some rect
 
 The main usage of this optimization is to allow many catalysts in small rectangle that run in pretty large search space. 
 
+`full-report <file name>`
+
+If you want to report all catalysts ignoring the filters into seperate file , specify file name with full-report. 
+
+ NOTE: fit-in-width-height optimization will still run and ignore all that don't fit. The difference is that fit-in optimization is pre-calcuation filter, while the usual filter is post-calculation filter, so the report can still be done into seperate place. 
+ 
+ If you don't specify this flag the code will ignore it and report only the results after filter. 
 --
 
 Compiled using g++. 
