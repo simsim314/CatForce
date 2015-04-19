@@ -39,6 +39,12 @@ public:
 	int startGen; 
 	std::string outputFile;
 	int searchArea[4];
+	int maxW;
+	int maxH;
+	std::vector<std::string> targetFilter; 
+	std::vector<int> filterdx; 
+	std::vector<int> filterdy; 
+	std::vector<int> filterGen; 
 	
 	SearchParams()
 	{
@@ -54,6 +60,8 @@ public:
 		yPat = 0;
 		startGen = 1;
 		outputFile = "results.rle";
+		maxW = -1;
+		maxH = -1;
 	}
 };
 
@@ -154,6 +162,8 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 	std::string area = "search-area";
 	std::string pat = "pat";
 	std::string outputFile = "output";
+	std::string filter = "filter";
+	std::string maxWH = "fit-in-width-height";
 	
 	std::string line; 
 	
@@ -211,6 +221,20 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 					params.outputFile.append(elems[i]);
 				}
 			}
+			
+			if(elems[0] == filter) 
+			{
+				params.filterGen.push_back(atoi(elems[1].c_str()));
+				params.targetFilter.push_back(elems[2]);
+				params.filterdx.push_back(atoi(elems[3].c_str()));
+				params.filterdy.push_back(atoi(elems[4].c_str()));
+			}
+			
+			if(elems[0] == maxWH)
+			{
+				params.maxW = atoi(elems[1].c_str());
+				params.maxH = atoi(elems[2].c_str());
+			}			
 			
 		}
 		catch(const std::exception& ex)
@@ -276,6 +300,13 @@ int main (int argc, char *argv[])
 
 	LifeIterator *iters[numIters];
 
+	std::vector<LifeTarget*> targetFilter; 
+	
+	for(int i = 0; i < params.targetFilter.size(); i++)
+	{
+		targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(), params.filterdx[i], params.filterdy[i]));
+	}
+	
 	std::vector<LifeTarget*> targets;
 	
 	for(int i = 0; i < states.size(); i++)
@@ -359,10 +390,25 @@ int main (int argc, char *argv[])
 	std::cout << "Approximated Total: " << total << std::endl;
 	total = total / 1000000;
 	
-	
 	if(total == 0)
 		total++;
-		
+	
+	//optimization to use const in if - compiler should optimize and skip
+	const bool validateWH = params.maxW > 0 && params.maxH > 0;
+	
+	const bool hasFilter = params.targetFilter.size() > 0;
+	
+	int maxGen = -1;
+	
+	for(int j = 0; j < targetFilter.size(); j++)
+	{
+		if(params.filterGen[j] > maxGen)
+			maxGen = params.filterGen[j];
+	}
+	
+	const int maxgen = maxGen;
+	
+	//Main loop of search on iters
 	do{
 		int valid = Validate(iters, numIters); 
 		
@@ -370,6 +416,31 @@ int main (int argc, char *argv[])
 			continue;
 		
 		
+		if(validateWH)
+		{
+			int minX = 100000;
+			int minY = 100000;
+			int maxX = -100000;
+			int maxY = -100000;
+			
+			for(int i = 0; i < numIters; i++)
+			{
+				if(iters[i]->curx > maxX)
+					maxX = iters[i]->curx;
+				
+				if(iters[i]->cury > maxY)
+					maxY = iters[i]->cury;
+					
+				if(iters[i]->curx < minX)
+					minX = iters[i]->curx;
+				
+				if(iters[i]->cury < minY)
+					minY = iters[i]->cury;
+			}
+
+			if(maxX - minX >= params.maxW || maxY - minY >= params.maxH)
+				valid = NO;
+		}
 		
 		idx++; 
 		
@@ -378,7 +449,7 @@ int main (int argc, char *argv[])
 			if((double)(clock() - current) / CLOCKS_PER_SEC > 5)
 			{
 				current = clock();
-				std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << std::endl;
+				std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << " sec" << std::endl;
 				
 				std::ofstream resultsFile(params.outputFile.c_str());
 				resultsFile << result;
@@ -386,6 +457,9 @@ int main (int argc, char *argv[])
 				
 			}
 		}
+		
+		if(valid == NO)
+			continue;
 		
 		int minIter = 1000000;
 		
@@ -460,6 +534,21 @@ int main (int argc, char *argv[])
 			if(fail)
 				break;
 				
+			if(hasFilter)
+			{
+				for(int j = 0; j < targetFilter.size(); j++)
+				{
+					if(GlobalState->gen == params.filterGen[j] && Contains(GlobalState, targetFilter[j]) == NO)
+					{
+						fail = true;
+						break;
+					}
+				}
+				
+				if(fail)
+					break;
+			}
+			
 			int isAllActivated = YES;
 			
 			for(int j = 0; j < numIters; j++)
@@ -478,17 +567,48 @@ int main (int argc, char *argv[])
 			
 			if(surviveCount >= params.stableInterval)
 			{
-				New();
-					
-				for(int j = 0; j < numIters; j++)
+				bool valid = true; 
+				
+				if(hasFilter)
 				{
-					PutState(iters[j]);
+					New();
+						
+					for(int j = 0; j < numIters; j++)
+					{
+						PutState(iters[j]);
+					}
+					
+					PutState(pat);
+
+					for(int j = 0; j <= maxgen; j++)
+					{
+						for(int k = 0; k < params.filterGen.size(); k++)
+						{
+							if(GlobalState->gen == params.filterGen[k] && Contains(GlobalState, targetFilter[k]) == NO)
+							{
+								valid = false;
+								break;
+							}
+						}
+						
+						Run(1);
+					}
 				}
 				
-				PutState(pat);
-				result.append(GetRLE(GlobalState));
-				result.append("100$");
-				found++;
+				if(valid)
+				{
+					New();
+						
+					for(int j = 0; j < numIters; j++)
+					{
+						PutState(iters[j]);
+					}
+					
+					PutState(pat);
+					result.append(GetRLE(GlobalState));
+					result.append("100$");
+					found++;
+				}
 				
 				break;
 			}
