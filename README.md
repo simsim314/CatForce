@@ -77,10 +77,13 @@ output file name.
 `filter gen rle dx dy`
 
 Note: one can use several filters. The filter will be checked if successful catalyst was found. 
+
 Note: filter will assume live cells in rle and dead cell in close proximity neighborhood to the pattern in rle. 
 
 gen - the generation at which the filter is applied. 
+
 rle - the pattern rle that should be present. 
+
 (dx dy) - transform of the pattern (mandatory). 
 
 `fit-in-width-height width height`
