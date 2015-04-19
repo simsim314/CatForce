@@ -73,6 +73,22 @@ symmetries-char - character that defines all symmetries the catalyst can be used
 output file name. 
 
 Compilation
+
+`filter gen rle dx dy`
+
+Note: one can use several filters. The filter will be checked if successful catalyst was found. 
+Note: filter will assume live cells in rle and dead cell in close proximity neighborhood to the pattern in rle. 
+
+gen - the generation at which the filter is applied. 
+rle - the pattern rle that should be present. 
+(dx dy) - transform of the pattern (mandatory). 
+
+`fit-in-width-height width height`
+
+To optimize run time one can choose to check only catalysts bounded by some rectangle. That means if all catalysts centers fit inside rectangle of size (width, height) only then the validation would be made. 
+
+The main usage of this optimization is to allow many catalysts in small rectangle that run in pretty large search space. 
+
 --
 
 Compiled using g++. 
