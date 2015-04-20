@@ -12,6 +12,8 @@ Usage
 
 Pass the .in to the CatForce.exe. 
 
+Command Line: CatForce.exe 1.in
+
 Technical Details
 --
 
@@ -72,15 +74,16 @@ symmetries-char - character that defines all symmetries the catalyst can be used
 
 output file name. 
 
-Compilation
-
 `filter gen rle dx dy`
 
 Note: one can use several filters. The filter will be checked if successful catalyst was found. 
+
 Note: filter will assume live cells in rle and dead cell in close proximity neighborhood to the pattern in rle. 
 
 gen - the generation at which the filter is applied. 
+
 rle - the pattern rle that should be present. 
+
 (dx dy) - transform of the pattern (mandatory). 
 
 `fit-in-width-height width height`
@@ -91,11 +94,15 @@ The main usage of this optimization is to allow many catalysts in small rectangl
 
 `full-report <file name>`
 
-If you want to report all catalysts ignoring the filters into seperate file , specify file name with full-report. 
+If you want to report all valid catalysts ignoring the filters into seperate file.
+
+file name - specify file name for the full-report. 
 
  NOTE: fit-in-width-height optimization will still run and ignore all that don't fit. The difference is that fit-in optimization is pre-calcuation filter, while the usual filter is post-calculation filter, so the report can still be done into seperate place. 
  
  If you don't specify this flag the code will ignore it and report only the results after filter. 
+ 
+ Compilation
 --
 
 Compiled using g++. 
