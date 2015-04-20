@@ -289,45 +289,9 @@ void InitCatalysts(std::string fname, std::vector<LifeState*>& states, std::vect
 	GenerateStates(catalysts, states, maxSurvive);
 } 
 
-int main (int argc, char *argv[]) 
+void XYStartGenPerState(const std::vector<LifeTarget*> &targets, LifeState* pat, const SearchParams& params, const std::vector<LifeState*>& states, std::vector<std::vector<std::vector<int> > >& statexyGen)
 {
-	if(argc < 2)
-	{
-		std::cout << "Usage CatForce.exe <in file>";
-		exit(0);
-	}
-	
-	std::string result = "x = 0, y = 0, rule = B3/S23\n";
-	clock_t begin = clock();
-	
-	New();
-   
-	std::vector<LifeState*> states;
-	std::vector<int> maxSurvive;
-	
-	SearchParams params;
-	InitCatalysts(argv[1], states, maxSurvive, params);
-	
-	LifeState* pat =  NewState(params.pat.c_str(), params.xPat, params.yPat);
-	
-	int numIters = params.numCatalysts ;
 
-	LifeIterator *iters[numIters];
-
-	std::vector<LifeTarget*> targetFilter; 
-	
-	for(int i = 0; i < params.targetFilter.size(); i++)
-	{
-		targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(), params.filterdx[i], params.filterdy[i]));
-	}
-	
-	std::vector<LifeTarget*> targets;
-	
-	for(int i = 0; i < states.size(); i++)
-		targets.push_back(NewTarget(states[i]));
-		
-	std::vector<std::vector<std::vector<int> > > statexyGen; 
-	
 	for(int i = 0; i < states.size(); i++)
 	{
 		std::vector<std::vector<int> > xyVec; 
@@ -363,8 +327,10 @@ int main (int argc, char *argv[])
 		
 		statexyGen.push_back(xyVec);
 	}
-	
-	std::vector<LifeState*> preIterated;
+}
+
+void PreIteratePat(LifeState* pat, std::vector<LifeState*>& preIterated, const SearchParams& params)
+{
 	New();
 	PutState(pat);
 		
@@ -375,91 +341,115 @@ int main (int argc, char *argv[])
 		preIterated.push_back(t);
 		Run(1);
 	}
-	
-	int activated[numIters];
-	int absentCount[numIters];
+}
 
-	LifeState* statesArr[states.size()];
-	std::copy(states.begin(), states.end(), statesArr);
+class SearchSetup
+{
+public:
+
+	std::string result;
+	clock_t begin;
+	std::vector<LifeState*> states;
+	std::vector<int> maxSurvive;
+	SearchParams params;
+	LifeState* pat;
+	int numIters;
+	std::vector<LifeIterator*> iters;
+	std::vector<LifeTarget*> targetFilter; 
+	std::vector<LifeTarget*> targets;
+	std::vector<std::vector<std::vector<int> > > statexyGen; 
+	std::vector<LifeState*> preIterated;
+	std::vector<int> activated;
+	std::vector<int> absentCount;
+	std::vector<LifeState*> statesArr;
+	clock_t current;
+	long long idx; 
+	int found; 
+	long long total; 
+	std::string fullReport;
 	
-	for(int i = 0; i < numIters; i++)
-		iters[i] = NewIterator(statesArr, params.searchArea[0], params.searchArea[1], params.searchArea[2], params.searchArea[3], states.size());
-	
-	clock_t current = clock();
-	long long idx = 0; 
-	int found = 0; 
-	long long total = 1; 
-	long fact = 1;
-	
-	for(int i = 0; i < numIters; i++)
+	void Init(char* inputFile)
 	{
-		total *= (iters[i] -> w); 
-		total *= (iters[i] -> h); 
-		total *= (iters[i] -> s); 
-		fact *= (i + 1);
-	}
-	
-	total /= fact;
-	
-	std::cout << "Approximated Total: " << total << std::endl;
-	total = total / 1000000;
-	
-	if(total == 0)
-		total++;
-	
-	//optimization to use const in if - compiler should optimize and skip
-	const bool validateWH = params.maxW > 0 && params.maxH > 0;
-	
-	const bool hasFilter = params.targetFilter.size() > 0;
-	
-	const bool reportAll = params.fullReportFile.length() != 0;
-	std::string fullReport = "x = 0, y = 0, rule = B3/S23\n";
-	
-	const bool hasFilterDontReportAll = hasFilter && !reportAll;
-	int maxGen = -1;
-	
-	for(int j = 0; j < targetFilter.size(); j++)
-	{
-		if(params.filterGen[j] > maxGen)
-			maxGen = params.filterGen[j];
-	}
-	
-	const int maxgen = maxGen;
-	
-	//Main loop of search on iters
-	do{
-		int valid = Validate(iters, numIters); 
+		result = "x = 0, y = 0, rule = B3/S23\n";
+		begin = clock();
+		InitCatalysts(inputFile, states, maxSurvive, params);
+		pat =  NewState(params.pat.c_str(), params.xPat, params.yPat);
+		numIters = params.numCatalysts;
 		
-		if(valid == NO)
-			continue;
+		for(int i = 0; i < params.targetFilter.size(); i++)
+			targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(), params.filterdx[i], params.filterdy[i]));
+	
+		for(int i = 0; i < states.size(); i++)
+			targets.push_back(NewTarget(states[i]));
 		
+		XYStartGenPerState(targets, pat, params, states, statexyGen);
 		
-		if(validateWH)
+		PreIteratePat(pat, preIterated, params);
+		
+		for(int i = 0; i < numIters; i++)
 		{
-			int minX = 100000;
-			int minY = 100000;
-			int maxX = -100000;
-			int maxY = -100000;
-			
-			for(int i = 0; i < numIters; i++)
-			{
-				if(iters[i]->curx > maxX)
-					maxX = iters[i]->curx;
-				
-				if(iters[i]->cury > maxY)
-					maxY = iters[i]->cury;
-					
-				if(iters[i]->curx < minX)
-					minX = iters[i]->curx;
-				
-				if(iters[i]->cury < minY)
-					minY = iters[i]->cury;
-			}
-
-			if(maxX - minX >= params.maxW || maxY - minY >= params.maxH)
-				valid = NO;
+			iters.push_back(NewIterator(&states[0], params.searchArea[0], params.searchArea[1], params.searchArea[2], params.searchArea[3], states.size()));
+			activated.push_back(0);
+			absentCount.push_back(0);
 		}
 		
+		current = clock();
+		idx = 0; 
+		found = 0; 
+		total = 1; 
+		
+		int fact = 1;
+		
+		for(int i = 0; i < numIters; i++)
+		{
+			total *= (iters[i] -> w); 
+			total *= (iters[i] -> h); 
+			total *= (iters[i] -> s); 
+			fact *= (i + 1);
+		}
+		
+		total /= fact;
+		
+		std::cout << "Approximated Total: " << total << std::endl;
+		total = total / 1000000;
+		
+		if(total == 0)
+			total++;
+			
+		fullReport = "x = 0, y = 0, rule = B3/S23\n";
+	}
+		
+	int FilterMaxGen()
+	{
+		int maxGen = -1;
+
+		for(int j = 0; j < targetFilter.size(); j++)
+		{
+			if(params.filterGen[j] > maxGen)
+				maxGen = params.filterGen[j];
+		}
+		
+		return maxGen;
+	}
+	
+	void Report()
+	{
+		std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << " sec" << std::endl;
+				
+		std::ofstream resultsFile(params.outputFile.c_str());
+		resultsFile << result;
+		resultsFile.close();
+		
+		if(params.fullReportFile.length() != 0)
+		{
+			std::ofstream allfile(params.fullReportFile.c_str());
+			allfile << fullReport;
+			allfile.close();
+		}
+	}
+	
+	void IncreaseIndexAndReport()
+	{
 		idx++; 
 		
 		if(idx % 1000000 == 0)
@@ -467,25 +457,42 @@ int main (int argc, char *argv[])
 			if((double)(clock() - current) / CLOCKS_PER_SEC > 5)
 			{
 				current = clock();
-				std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << " sec" << std::endl;
-				
-				std::ofstream resultsFile(params.outputFile.c_str());
-				resultsFile << result;
-				resultsFile.close();
-				
-				if(reportAll)
-				{
-					std::ofstream allfile(params.fullReportFile.c_str());
-					allfile << fullReport;
-					allfile.close();
-				}
-				
+				Report();
 			}
 		}
 		
-		if(valid == NO)
-			continue;
+	}
+	
+	int ValidateMinWidthHeight()
+	{
+		int minX = 100000;
+		int minY = 100000;
+		int maxX = -100000;
+		int maxY = -100000;
 		
+		for(int i = 0; i < numIters; i++)
+		{
+			if(iters[i]->curx > maxX)
+				maxX = iters[i]->curx;
+			
+			if(iters[i]->cury > maxY)
+				maxY = iters[i]->cury;
+				
+			if(iters[i]->curx < minX)
+				minX = iters[i]->curx;
+			
+			if(iters[i]->cury < minY)
+				minY = iters[i]->cury;
+		}
+
+		if(maxX - minX >= params.maxW || maxY - minY >= params.maxH)
+			return NO;
+		else
+			return YES;
+	}
+	
+	int LastNonActiveGeneration()
+	{
 		int minIter = 1000000;
 		
 		for(int i = 0; i < numIters; i++)
@@ -498,177 +505,244 @@ int main (int argc, char *argv[])
 				break;
 		}
 		
-		if(minIter < params.startGen)
-			continue;
-			
-		New();
+		return minIter;
 		
+	}
+	
+	void PutItersState()
+	{
 		for(int i = 0; i < numIters; i++)
 			PutState(iters[i]);
-		
+	}
+	
+	int CatalystCollide()
+	{
 		Run(1);
 
-		int collide = NO;
-		
 		for(int i = 0; i < numIters; i++)
 		{
 			if(Contains(GlobalState, targets[iters[i]->curs], iters[i]->curx, iters[i]->cury) == NO)
 			{
-				collide = YES;
-				break;
+				return YES;
 			}
 		}
 
-		if(collide == YES)
-			continue;
+		return NO;
+	}
 	
-		PutState(preIterated[minIter]);
-		
+	void InitActivationCounters()
+	{
 		for(int i = 0; i < numIters; i++)
 		{
 			activated[i] = NO;
 			absentCount[i] = 0;
 		}
+	}
+	
+	bool UpdateActivationCountersFail()
+	{
+		for(int j = 0; j < numIters; j++)
+		{
+			if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) == NO)
+			{
+				activated[j] = YES;
+				absentCount[j]++;
+				
+				if(absentCount[j] > maxSurvive[iters[j]->curs])
+				{
+					return true;
+				}
+			}
+			else
+			{
+				absentCount[j] = 0;
+			}
+		}	
+
+		return false;
+			
+	}
+	
+	bool FilterForCurrentGenFail()
+	{
+		for(int j = 0; j < targetFilter.size(); j++)
+		{
+			if(GlobalState->gen == params.filterGen[j] && Contains(GlobalState, targetFilter[j]) == NO)
+			{
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	bool IsAllActivated()
+	{
+		for(int j = 0; j < numIters; j++)
+		{	
+			if(activated[j] == NO || absentCount[j] != 0)
+			{
+				return NO;
+			}
+		}
+		
+		return YES;
+	}
+	
+	void PutCurrentState()
+	{
+		New();
+			
+		for(int j = 0; j < numIters; j++)
+		{
+			PutState(iters[j]);
+		}
+		
+		PutState(pat);
+	}
+	
+	bool ValidateFilters(const int& maxFilterGen)
+	{
+		for(int j = 0; j <= maxFilterGen; j++)
+		{
+			for(int k = 0; k < params.filterGen.size(); k++)
+			{
+				if(GlobalState->gen == params.filterGen[k] && Contains(GlobalState, targetFilter[k]) == NO)
+					return false;
+			}
+			
+			Run(1);
+		}
+		
+		return true;
+	}
+};
+
+int main (int argc, char *argv[]) 
+{
+	if(argc < 2)
+	{
+		std::cout << "Usage CatForce.exe <in file>";
+		exit(0);
+	}
+	
+	//LifeAPI initialization. 
+	New();
+	
+	SearchSetup setup; 
+	setup.Init(argv[1]);
+	
+	//optimization to use const in if - compiler should optimize and skip
+	const bool validateWH = setup.params.maxW > 0 && setup.params.maxH > 0;
+	const bool hasFilter = setup.params.targetFilter.size() > 0;
+	const bool reportAll = setup.params.fullReportFile.length() != 0;
+	const bool hasFilterDontReportAll = hasFilter && !reportAll;
+
+	const int filterMaxGen = setup.FilterMaxGen();
+	const int iterationMaxGen = setup.params.maxGen;
+	const int numIters = setup.numIters;
+	//Main loop of search on iters
+	do{
+		int valid = Validate(&setup.iters[0], numIters); 
+		
+		if(valid == NO)
+			continue;
+		
+		//width-height validation enabled
+		if(validateWH)
+		{
+			valid = setup.ValidateMinWidthHeight();
+		}
+		
+		setup.IncreaseIndexAndReport();
+		
+		//Valid remains YES after width-height Validation
+		if(valid == NO)
+			continue;
+		
+		int minIter = setup.LastNonActiveGeneration();
+		
+		//Activation before first generation allowed to be activated
+		if(minIter <  setup.params.startGen)
+			continue;
+		
+		//Place catalysts first and check if they collide. 
+		New();
+		
+		setup.PutItersState();
+		
+		if(setup.CatalystCollide() == YES)
+			continue;
+	
+		PutState(setup.preIterated[minIter]);
+		
+		//Initial setup countters for absense and activation
+		setup.InitActivationCounters();
 		
 		int surviveCount = 0;
-		
-		for(int i = minIter; i < params.maxGen; i++)
+
+		for(int i = minIter; i < iterationMaxGen; i++)
 		{
 			Run(1);	
-			bool fail = false;
-
-			for(int j = 0; j < numIters; j++)
-			{
-				if(Contains(GlobalState, targets[iters[j]->curs], iters[j]->curx, iters[j]->cury) == NO)
-				{
-					activated[j] = YES;
-					absentCount[j]++;
-					
-					if(absentCount[j] > maxSurvive[iters[j]->curs])
-					{
-						fail = true;
-						break;
-					}
-				}
-				else
-				{
-					absentCount[j] = 0;
-				}
-			}		
 			
-			if(fail)
+			//Fail if some catalyst is idle for too long - updates the counters for them otherwise. 
+			if(setup.UpdateActivationCountersFail())
 				break;
 				
+			//const bool optimization - will skip this always. 
 			if(hasFilterDontReportAll)
 			{
-				for(int j = 0; j < targetFilter.size(); j++)
-				{
-					if(GlobalState->gen == params.filterGen[j] && Contains(GlobalState, targetFilter[j]) == NO)
-					{
-						fail = true;
-						break;
-					}
-				}
-				
-				if(fail)
+				//Validate filters if any of them exist. Will validate on current gen of GlobalState
+				if(setup.FilterForCurrentGenFail())
 					break;
 			}
 			
-			int isAllActivated = YES;
-			
-			for(int j = 0; j < numIters; j++)
-			{	
-				if(activated[j] == NO || absentCount[j] != 0)
-				{
-					isAllActivated = NO;
-					break;
-				}
-			}
-			
-			if(isAllActivated == YES)
+			if(setup.IsAllActivated())
 				surviveCount++;
 			else
 				surviveCount = 0;
 			
-			if(surviveCount >= params.stableInterval)
+			//If everything was actuvated and stable for stableInterval then report. 
+			if(surviveCount >= setup.params.stableInterval)
 			{
 				bool valid = true; 
 				
+				//If has fitlter validate them;
 				if(hasFilter)
 				{
-					New();
-						
-					for(int j = 0; j < numIters; j++)
-					{
-						PutState(iters[j]);
-					}
-					
-					PutState(pat);
-
-					for(int j = 0; j <= maxgen; j++)
-					{
-						for(int k = 0; k < params.filterGen.size(); k++)
-						{
-							if(GlobalState->gen == params.filterGen[k] && Contains(GlobalState, targetFilter[k]) == NO)
-							{
-								valid = false;
-								break;
-							}
-						}
-						
-						Run(1);
-					}
+					setup.PutCurrentState();
+					valid = setup.ValidateFilters(filterMaxGen);
 				}
 				
+				//If all filters validated update results
 				if(valid)
 				{
-					New();
-						
-					for(int j = 0; j < numIters; j++)
-					{
-						PutState(iters[j]);
-					}
-					
-					PutState(pat);
-					result.append(GetRLE(GlobalState));
-					result.append("100$");
-					found++;
+					setup.PutCurrentState();
+
+					setup.result.append(GetRLE(GlobalState));
+					setup.result.append("100$");
+					setup.found++;
 				}
 				
+				//if reportAll - ignore filters and update fullReport
 				if(reportAll)
 				{
-					New();
-						
-					for(int j = 0; j < numIters; j++)
-					{
-						PutState(iters[j]);
-					}
+					setup.PutCurrentState();
 					
-					PutState(pat);
-					fullReport.append(GetRLE(GlobalState));
-					fullReport.append("100$");
+					setup.fullReport.append(GetRLE(GlobalState));
+					setup.fullReport.append("100$");
 				}
 				break;
 			}
 		}
-	}while(Next(iters, numIters, NO));
+	}while(Next(&setup.iters[0], numIters, NO));
 	
-	std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << " sec" << std::endl;
-	std::ofstream resultsFile(params.outputFile.c_str());
-    resultsFile << result;
-    resultsFile.close();
+	//Print report one final time (update files with the final results). 
+	setup.Report();
 	
-	if(reportAll)
-	{
-		std::ofstream allfile(params.fullReportFile.c_str());
-		allfile << fullReport;
-		allfile.close();
-	}
-	
-	printf("!");
 	printf("\n\nFINISH\n");
 	clock_t end = clock();
-	printf("Elapsed: %f seconds\n", (double)(end - begin) / CLOCKS_PER_SEC);
+	printf("Total elapsed time: %f seconds\n", (double)(end - setup.begin) / CLOCKS_PER_SEC);
 
 	getchar();
 }
