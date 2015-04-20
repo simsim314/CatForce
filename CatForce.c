@@ -9,15 +9,15 @@
 #include <fstream>
 #include <stdexcept>
 
-int none[] = {1, 0, 0, 1};
-int flipX[] = {-1, 0, 0, 1};
-int flipY[] = {1, 0, 0, -1};
-int flipXY[] = {-1, 0, 0, -1};
+const int none[] = {1, 0, 0, 1};
+const int flipX[] = {-1, 0, 0, 1};
+const int flipY[] = {1, 0, 0, -1};
+const int flipXY[] = {-1, 0, 0, -1};
 
-int rot90clock[] = {0, 1, -1, 0};
-int rot90anti[] = {0, -1, 1, 0};
-int symmXY[] = {0, 1, 1, 0};
-int symmYX[] = {0, -1, -1, 0};
+const int rot90clock[] = {0, 1, -1, 0};
+const int rot90anti[] = {0, -1, 1, 0};
+const int symmXY[] = {0, 1, 1, 0};
+const int symmYX[] = {0, -1, -1, 0};
 
 void split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss(s);
@@ -103,7 +103,7 @@ public:
 	}
 };	
 
-void CharToTransVec(char ch, std::vector<int* >& trans)
+void CharToTransVec(char ch, std::vector<const int* >& trans)
 {
 	trans.push_back(none);
 	
@@ -261,7 +261,7 @@ void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<Lif
 {
 	for(int i = 0; i < catalysts.size(); i++)
 	{
-		std::vector<int* > trans;
+		std::vector<const int* > trans;
 		CharToTransVec(catalysts[i].symmType, trans);
 		
 		const char *rle = catalysts[i].rle.c_str();
