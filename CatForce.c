@@ -367,6 +367,7 @@ public:
 	int found; 
 	long long total; 
 	std::string fullReport;
+	unsigned short int counter; 
 	
 	void Init(char* inputFile)
 	{
@@ -397,6 +398,7 @@ public:
 		idx = 0; 
 		found = 0; 
 		total = 1; 
+		counter = 0; 
 		
 		int fact = 1;
 		
@@ -450,14 +452,19 @@ public:
 	
 	void IncreaseIndexAndReport()
 	{
-		idx++; 
+		counter++; 
 		
-		if(idx % 1000000 == 0)
+		if(counter == 0)
 		{
-			if((double)(clock() - current) / CLOCKS_PER_SEC > 5)
+			idx += 65536;
+			
+			if(idx % (1048576) == 0)
 			{
-				current = clock();
-				Report();
+				if((double)(clock() - current) / CLOCKS_PER_SEC > 5)
+				{
+					current = clock();
+					Report();
+				}
 			}
 		}
 		
@@ -465,12 +472,12 @@ public:
 	
 	int ValidateMinWidthHeight()
 	{
-		int minX = 100000;
-		int minY = 100000;
-		int maxX = -100000;
-		int maxY = -100000;
+		int minX = iters[0]->curx;
+		int minY = iters[0]->cury;
+		int maxX = iters[0]->curx;
+		int maxY = iters[0]->cury;
 		
-		for(int i = 0; i < numIters; i++)
+		for(int i = 1; i < numIters; i++)
 		{
 			if(iters[i]->curx > maxX)
 				maxX = iters[i]->curx;
