@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+#include <iomanip>
 
 const int none[] = {1, 0, 0, 1};
 const int flipX[] = {-1, 0, 0, 1};
@@ -124,17 +125,17 @@ void CharToTransVec(char ch, std::vector<const int* >& trans)
 		return;
 	}
 	
-	if(ch == '/')
+	if(ch == '/' || ch == '\\')
 	{
 		trans.push_back(symmXY);
 		return;
 	}
-	
+	//For 180 degree symetrical 
 	if(ch == 'x')
 	{
-		trans.push_back(rot90anti);
 		trans.push_back(rot90clock);
-		trans.push_back(flipXY);
+		trans.push_back(flipX);
+		trans.push_back(symmXY);
 		return;
 	}
 	
@@ -436,7 +437,19 @@ public:
 	
 	void Report()
 	{
-		std::cout << "Checked: " << (idx / 10000) / total << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", elapsed: " << (clock() - begin) / CLOCKS_PER_SEC << " sec" << std::endl;
+		float percent = (idx / 10000) / (total * 1.0);
+		int sec = (clock() - begin) / CLOCKS_PER_SEC;
+		int estimation = 0; 
+		int checkPerSecond = idx / (sec * 1000);
+		
+		if(percent > 0)
+			estimation = (sec * 100) / percent;
+			
+		std::cout << std::setprecision(1)  << std::fixed << percent << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", passed: ";
+		PrintTime(sec);
+		std::cout <<", estimation: ";
+		PrintTime(estimation);
+		std::cout <<", " << std::setprecision(1)  << std::fixed << checkPerSecond << "K/sec" << std::endl;
 				
 		std::ofstream resultsFile(params.outputFile.c_str());
 		resultsFile << result;
@@ -450,6 +463,15 @@ public:
 		}
 	}
 	
+	void PrintTime(int sec)
+	{
+		int hr = sec / 3600;
+		int min = (sec / 60) - hr * 60;
+		int secs = sec - 3600 * hr - 60 * min;
+		std::cout << hr << ":"  << min << ":" << secs;
+		return;
+		
+	}
 	void IncreaseIndexAndReport()
 	{
 		counter++; 
