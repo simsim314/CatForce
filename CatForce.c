@@ -653,7 +653,7 @@ public:
 	void Report()
 	{
 		float percent = (idx / 10000) / (total * 1.0);
-		int sec = (clock() - begin) / CLOCKS_PER_SEC;
+		int sec = (clock() - begin) / CLOCKS_PER_SEC + 1;
 		int estimation = 0; 
 		int checkPerSecond = idx / (sec * 1000);
 		
@@ -744,11 +744,12 @@ public:
 	
 	int LastNonActiveGeneration()
 	{
-		int minIter = 1000000;
+		int minIter = statexyGen[iters[0]->curs][(iters[0]->curx + 64) % 64][(iters[0]->cury + 64) % 64];
 		
-		for(int i = 0; i < numIters; i++)
+		for(int i = 1; i < numIters; i++)
 		{
 			int startGen = statexyGen[iters[i]->curs][(iters[i]->curx + 64) % 64][(iters[i]->cury + 64) % 64];
+			
 			if(startGen < minIter)
 				minIter = startGen;
 				
