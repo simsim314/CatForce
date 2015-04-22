@@ -38,6 +38,7 @@ public:
 	int xPat;
 	int yPat;
 	int startGen; 
+	int lastGen;
 	std::string outputFile;
 	std::string fullReportFile;
 	int searchArea[4];
@@ -61,6 +62,7 @@ public:
 		xPat = 0;
 		yPat = 0;
 		startGen = 1;
+		lastGen = 100000;
 		outputFile = "results.rle";
 		maxW = -1;
 		maxH = -1;
@@ -175,6 +177,8 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 	std::string Cat = "cat";
 	std::string maxGen = "max-gen";
 	std::string startGen = "start-gen";
+	std::string lastGen = "last-gen";
+	
 	std::string numCat = "num-catalyst";
 	std::string stable = "stable-interval";
 	std::string area = "search-area";
@@ -229,6 +233,9 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 			
 			if(elems[0] == startGen) 
 				params.startGen = atoi(elems[1].c_str());
+			
+			if(elems[0] == lastGen) 
+				params.lastGen = atoi(elems[1].c_str());
 			
 			if(elems[0] == outputFile) 
 			{
@@ -930,7 +937,7 @@ int main (int argc, char *argv[])
 		int minIter = setup.LastNonActiveGeneration();
 		
 		//Activation before first generation allowed to be activated
-		if(minIter <  setup.params.startGen)
+		if(minIter <  setup.params.startGen || minIter >= setup.params.lastGen)
 			continue;
 		
 		//Place catalysts first and check if they collide. 
