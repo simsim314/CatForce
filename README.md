@@ -54,7 +54,7 @@ Search area is always rectangular.
 The main pattern rle. 
 (dx, dy) - optional. Transformation for the pat. 
 
-`cat <rle> <max-gen-petrube> dx dy <symmetries-char>`
+`cat <rle> <max-gen-petrube> dx dy <symmetries-char> [forbidden <rle> x y]`
 
 catalysts - can be few in a single .in file. 
 
@@ -69,6 +69,10 @@ symmetries-char - character that defines all symmetries the catalyst can be used
 -  /  diagonal mirror
 -  x  rotate 90 * k degrees. 
 -  *  All 8 variations of transformations. 
+
+forbidden is an option that will search for rle in the same location of the catalyst. If forbidden is matched, in any iteration of the potential solution (and on the place of the catalyst), the solution is ommited from the report. You can see forbidden as "catalyst attached filter", i.e. the forbidden pattern is based on catalyst location. 
+
+Made to exclude eaters and similiar unwanted "grabage". You can use several forbidden rules. See 3.in for example. 
 
 `output <file.rle>`
 
