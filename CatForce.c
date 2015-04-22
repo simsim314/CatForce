@@ -344,6 +344,188 @@ void PreIteratePat(LifeState* pat, std::vector<LifeState*>& preIterated, const S
 	}
 }
 
+std::string GetRLE(const std::vector<std::vector<int> >& life2d)
+{
+	if(life2d.size() == 0)
+		return "";
+		
+	if(life2d[0].size() == 0)
+		return "";
+	
+	int h = life2d[0].size();
+	
+    std::stringstream result;
+
+	int eol_count = 0; 
+	
+	for(int j = 0; j < h; j++)
+	{
+            int last_val = -1;
+            int run_count = 0;
+			
+         for(int i = 0; i < life2d.size(); i++)
+		{
+                    int val = life2d[i][j];
+
+                    // Flush linefeeds if we find a live cell
+                    if(val == 1 && eol_count > 0)
+					{
+                            if(eol_count > 1)
+                                result << eol_count;
+                            
+							result << "$";
+                            
+                            eol_count = 0;
+					}
+
+                    // Flush current run if val changes
+                    if (val == 1 - last_val)
+                    {
+						if(run_count > 1)
+							result << run_count;
+						
+						if(last_val == 1)
+							result << "o"; 
+						else
+							result << "b";
+							
+                            
+						run_count = 0;
+					}
+
+                    run_count++;
+                    last_val = val;
+                }
+
+            // Flush run of live cells at end of line
+            if (last_val == 1)
+                {
+                    if(run_count > 1)
+                        result << run_count;
+                            
+                    result << "o";
+                            
+                    run_count = 0;
+                }
+
+            eol_count++;
+	}
+        
+	return result.str();
+}
+
+class CategoryContainer
+{
+public:
+	std::vector<std::pair<LifeState*, std::vector<LifeState*> > > categories;
+	int catDelta; 
+	LifeState* tempState;
+	
+	CategoryContainer()
+	{
+		catDelta = 5;
+		tempState = NewState();
+	}
+	
+	CategoryContainer(int cats)
+	{
+		catDelta = cats;
+		tempState = NewState();
+	}
+	
+	bool SameCategory(LifeState* a, LifeState* b)
+	{
+		if(a->gen > b->gen)
+			Evolve(b, a->gen - b->gen);
+		else if(a->gen < b->gen)
+			Evolve(a, b->gen - a->gen);
+		
+		for(int i = 0; i < catDelta; i++)
+		{
+			if(AreEqual(a, b) == YES)
+				return true;
+			
+			Evolve(a, 1);
+			Evolve(b, 1);
+		}
+		
+		return false;
+	}
+	
+	void Add(LifeState* init, LifeState* afterCatalyst, LifeState* catalysts)
+	{
+		LifeState* result = NewState();
+			
+		for(int i = 0; i < categories.size(); i++)
+		{
+			ClearData(result);
+			Copy(result, afterCatalyst, COPY);
+			Copy(result, catalysts, XOR);
+			ClearData(tempState);
+			Copy(tempState, categories[i].first, COPY);
+			
+			if(SameCategory(tempState, result))
+			{
+				std::vector<LifeState*>* vec = &categories[i].second;
+				ClearData(result);
+				Copy(result, init, COPY);
+				vec->push_back(result);
+				return;
+			}
+		}
+		
+		LifeState* categoryKey = NewState();
+		Copy(categoryKey, afterCatalyst, COPY);
+		Copy(categoryKey, catalysts, XOR);
+		
+		ClearData(result);
+		Copy(result, init, COPY);	
+		std::vector<LifeState*> categoryVec; 
+		categoryVec.push_back(result);
+		categories.push_back(std::pair<LifeState*, std::vector<LifeState*> >(categoryKey, categoryVec));
+	}
+	
+	std::string CategoriesRLE()
+	{
+		int largestCategory = 0; 
+		
+		for(int i = 0; i < categories.size(); i++)
+		{
+			std::vector<LifeState*>* vec = &(categories[i].second);
+			if(vec->size() > largestCategory)
+				largestCategory = vec->size();
+		}
+		const int Dist = 35 + 64; 
+		
+		int width = Dist * largestCategory;
+		int height = Dist * categories.size();
+		std::vector<std::vector<int> > vec;
+		
+		for(int i = 0; i < width; i++)
+		{
+			std::vector<int> temp; 
+			
+			for(int j = 0; j < height; j++)
+				temp.push_back(0);
+				
+			vec.push_back(temp);
+		}
+		
+		for(int cat = 0; cat < categories.size(); cat++)
+		{
+			const std::vector<LifeState*>& vecCat = categories[cat].second;
+			
+			for(int l = 0; l < vecCat.size(); l++)
+				for(int j = 0; j < N; j++)
+					for(int i = 0; i < N; i++)
+						vec[Dist * l + i][Dist * cat + j] = Get(i, j, vecCat[l]->state);
+			
+		}
+		
+		return GetRLE(vec);
+	}
+};
+
 class SearchSetup
 {
 public:
@@ -369,6 +551,7 @@ public:
 	long long total; 
 	std::string fullReport;
 	unsigned short int counter; 
+	CategoryContainer cats;
 	
 	void Init(char* inputFile)
 	{
@@ -455,6 +638,12 @@ public:
 		resultsFile << result;
 		resultsFile.close();
 		
+		std::ofstream catResultsFile((std::string("Categories-") + params.outputFile).c_str());
+		catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
+		catResultsFile << cats.CategoriesRLE();
+		catResultsFile.close();
+		
+		
 		if(params.fullReportFile.length() != 0)
 		{
 			std::ofstream allfile(params.fullReportFile.c_str());
@@ -482,7 +671,7 @@ public:
 			
 			if(idx % (1048576) == 0)
 			{
-				if((double)(clock() - current) / CLOCKS_PER_SEC > 5)
+				if((double)(clock() - current) / CLOCKS_PER_SEC > 10)
 				{
 					current = clock();
 					Report();
@@ -657,6 +846,9 @@ int main (int argc, char *argv[])
 	
 	//LifeAPI initialization. 
 	New();
+	LifeState* init = NewState();
+	LifeState* afterCatalyst = NewState();
+	LifeState* catalysts = NewState();
 	
 	SearchSetup setup; 
 	setup.Init(argv[1]);
@@ -746,8 +938,19 @@ int main (int argc, char *argv[])
 				//If all filters validated update results
 				if(valid)
 				{
+					New();
+					setup.PutItersState();
+					ClearData(catalysts);
+					ClearData(init);
+					ClearData(afterCatalyst);
+					
+					Copy(catalysts, GlobalState, COPY);
 					setup.PutCurrentState();
-
+					Copy(init, GlobalState, COPY);
+					Run(i - setup.params.stableInterval + 2);
+					Copy(afterCatalyst, GlobalState, COPY);
+					setup.cats.Add(init, afterCatalyst, catalysts);
+					
 					setup.result.append(GetRLE(GlobalState));
 					setup.result.append("100$");
 					setup.found++;

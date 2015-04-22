@@ -2,7 +2,7 @@ max-gen 55
 start-gen 14
 num-catalyst 3
 stable-interval 5
-search-area -2 15 17 10
+search-area -5 10 25 30
 pat 3bo$3b3o$6bo$5b2o4$7bobo$7b2o$8bo$15b2o$8b2o5bobo$8b2o7bo$17b2o
 filter 45 2o$2o 8 11
 cat 2o$2o 60 0 0 .
@@ -13,5 +13,6 @@ cat bo$obo$bo 15 1 1 .
 cat 2o$obo$bo! 25 1 1 +
 cat 2o$obo$b2o! 35 1 1 |
 cat ob2o$2obo! 8 1 1 x
-output snark.rle
-full-report full-snark.rle
+output snark1.rle
+full-report full-snark1.rle
+fit-in-width-height 12 8

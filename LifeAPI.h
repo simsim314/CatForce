@@ -287,6 +287,8 @@ void Copy(LifeState* main, LifeState* delta, CopyType op)
 	{	
 		for(int i = 0; i < N; i++)
 			main->state[i] = delta->state[i];
+			
+		main->gen = delta->gen;
 	}
 	if(op == OR)
 	{	
