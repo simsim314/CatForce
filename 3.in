@@ -1,27 +1,27 @@
 ==Setup==
 
-max-gen 65
+max-gen 150
 start-gen 1
-num-catalyst 2
+num-catalyst 1
 stable-interval 25
 
 --search area---
-search-area 0 6 18 13
+search-area -20 -20 55 55
 fit-in-width-height 12 8
 
 -pattern--
-pat o4bo$2o3b2o$b2o3b2o$o4b2o$4b2o!
+pat 4bo$2b2o$b2o$o$b5o$2bo!
+
 
 ==Catalysts==
 cat 2o$2o 60 0 0 .
-cat 2b2o$3bo$3o$o 12 -2 -2 *
+cat 2o$o$b3o$3bo! 12 -2 -2 * forbidden 2o$o$b3ob2o$3bobobo$6bo! -2 -2 forbidden bo$obo$2o2$2o$o$b3o$3bo! -2 -6 forbidden bo$2bo$3o2$3b2o$3bo$4b3o$6bo! -5 -6
 cat bo$obo$obo$bo 50 1 2 /
 cat b2o$o2bo$bobo$2bo 35 2 2 +
 cat bo$obo$bo 15 1 1 .
 cat 2o$obo$bo! 25 1 1 +
 cat 2o$obo$b2o! 35 1 1 |
-cat ob2o$2obo! 8 1 1 x
 
 ==Output===
 #full-report full-Herschel.rle
-output Herschel.rle
+output Herschel.rle 

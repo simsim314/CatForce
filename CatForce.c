@@ -77,13 +77,15 @@ public:
 	int centerX; 
 	int centerY;
 	char symmType; 
+	std::vector<std::string> forbiddenRLE; 
+	std::vector<std::pair<int, int> > forbiddenXY; 
 	
 	CatalystInput(std::string line)
 	{
 		std::vector<std::string> elems; 
 		split(line, ' ', elems);
 		
-		if(elems.size() != 6)
+		if(elems.size() < 6)
 		{
 			std::cout << "The line " << line << "is invalid" << std::endl;
 			std::cout << "Format: cat <rle> <absense interval> <centerX> <centerY> <symm Type | + / x *>" << std::endl;
@@ -96,6 +98,19 @@ public:
 		centerX = atoi(elems[3].c_str());
 		centerY = atoi(elems[4].c_str());
 		symmType = elems[5].at(0);
+		
+		int argi = 6;
+		
+		while(argi + 3 < elems.size())
+		{
+			if(elems[argi] == "forbidden")
+			{
+				forbiddenRLE.push_back(elems[argi + 1]);
+				forbiddenXY.push_back(std::pair<int, int>(atoi(elems[argi + 2].c_str()), atoi(elems[argi + 3].c_str())));
+				
+				argi+=4;
+			}
+		}
 	}
 	
 	void Print()
@@ -258,7 +273,7 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 	}
 }
 
-void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<LifeState*>& states, std::vector<int>& maxSurvive)
+void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<LifeState*>& states, std::vector<std::vector<LifeTarget*> >& forbidden, std::vector<int>& maxSurvive)
 {
 	for(int i = 0; i < catalysts.size(); i++)
 	{
@@ -279,15 +294,24 @@ void GenerateStates(const std::vector<CatalystInput>& catalysts, std::vector<Lif
 			
 			states.push_back(NewState(rle, dx, dy, dxx, dxy, dyx, dyy));
 			maxSurvive.push_back(maxDesapear);
+			
+			std::vector<LifeTarget*> forbidTarg;
+			
+			for(int k = 0; k < catalysts[i].forbiddenRLE.size(); k++)
+			{
+				forbidTarg.push_back(NewTarget(NewState(catalysts[i].forbiddenRLE[k].c_str(), catalysts[i].forbiddenXY[k].first, catalysts[i].forbiddenXY[k].second, dxx, dxy, dyx, dyy)));
+			}
+			
+			forbidden.push_back(forbidTarg);
 		}
 	}
 }
 
-void InitCatalysts(std::string fname, std::vector<LifeState*>& states, std::vector<int>& maxSurvive, SearchParams& params)
+void InitCatalysts(std::string fname, std::vector<LifeState*>& states, std::vector<std::vector<LifeTarget*> >& forbidden, std::vector<int>& maxSurvive, SearchParams& params)
 {
 	std::vector<CatalystInput> catalysts;
 	ReadParams(fname, catalysts, params);
-	GenerateStates(catalysts, states, maxSurvive);
+	GenerateStates(catalysts, states, forbidden, maxSurvive);
 } 
 
 void XYStartGenPerState(const std::vector<LifeTarget*> &targets, LifeState* pat, const SearchParams& params, const std::vector<LifeState*>& states, std::vector<std::vector<std::vector<int> > >& statexyGen)
@@ -540,6 +564,7 @@ public:
 	std::vector<LifeIterator*> iters;
 	std::vector<LifeTarget*> targetFilter; 
 	std::vector<LifeTarget*> targets;
+	std::vector<std::vector<LifeTarget*> > forbiddenTargets;
 	std::vector<std::vector<std::vector<int> > > statexyGen; 
 	std::vector<LifeState*> preIterated;
 	std::vector<int> activated;
@@ -557,7 +582,7 @@ public:
 	{
 		result = "x = 0, y = 0, rule = B3/S23\n";
 		begin = clock();
-		InitCatalysts(inputFile, states, maxSurvive, params);
+		InitCatalysts(inputFile, states, forbiddenTargets, maxSurvive, params);
 		pat =  NewState(params.pat.c_str(), params.xPat, params.yPat);
 		numIters = params.numCatalysts;
 		
@@ -628,17 +653,18 @@ public:
 		if(percent > 0)
 			estimation = (sec * 100) / percent;
 			
-		std::cout << std::setprecision(1)  << std::fixed << percent << "%, " <<idx / 1000000 << "M / "  << total << "M, found: " << found <<", passed: ";
+		std::cout << std::setprecision(1)  << std::fixed << percent << "%," <<idx / 1000000 << "M/"  << total << "M, cats/find: " << cats.categories.size() << "/" << found <<", now: ";
 		PrintTime(sec);
-		std::cout <<", estimation: ";
+		std::cout <<", est: ";
 		PrintTime(estimation);
 		std::cout <<", " << std::setprecision(1)  << std::fixed << checkPerSecond << "K/sec" << std::endl;
-				
-		std::ofstream resultsFile(params.outputFile.c_str());
-		resultsFile << result;
-		resultsFile.close();
 		
-		std::ofstream catResultsFile((std::string("Categories-") + params.outputFile).c_str());
+		//Linear report seems to be non needed for now. Don't delete might have some use in the future.
+		//std::ofstream resultsFile(params.outputFile.c_str());
+		//resultsFile << result;
+		//resultsFile.close();
+		
+		std::ofstream catResultsFile(params.outputFile.c_str());
 		catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
 		catResultsFile << cats.CategoriesRLE();
 		catResultsFile.close();
@@ -755,6 +781,26 @@ public:
 			activated[i] = NO;
 			absentCount[i] = 0;
 		}
+	}
+	
+	bool HasForbidden(int curIter)
+	{
+		PutCurrentState();
+		
+		for(int i = 0; i <= curIter + 1; i++)
+		{
+			for(int j = 0; j < numIters; j++)
+			{
+				for(int k = 0; k < forbiddenTargets[iters[j]->curs].size(); k++)
+				{
+					if(Contains(GlobalState, forbiddenTargets[iters[j]->curs][k], iters[j]->curx, iters[j]->cury) == YES)
+						return true;
+				}
+			}
+			Run(1);
+		}
+		
+		return false;
 	}
 	
 	bool UpdateActivationCountersFail()
@@ -935,6 +981,9 @@ int main (int argc, char *argv[])
 					valid = setup.ValidateFilters(filterMaxGen);
 				}
 				
+				if(setup.HasForbidden(i))
+					break;
+					
 				//If all filters validated update results
 				if(valid)
 				{
@@ -950,7 +999,7 @@ int main (int argc, char *argv[])
 					Run(i - setup.params.stableInterval + 2);
 					Copy(afterCatalyst, GlobalState, COPY);
 					setup.cats.Add(init, afterCatalyst, catalysts);
-					
+					setup.PutCurrentState();
 					setup.result.append(GetRLE(GlobalState));
 					setup.result.append("100$");
 					setup.found++;
