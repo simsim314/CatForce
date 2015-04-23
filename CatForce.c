@@ -640,7 +640,7 @@ public:
 	}
 };
 
-class SearchSetup
+class CatalystSearcher
 {
 public:
 
@@ -667,6 +667,19 @@ public:
 	std::string fullReport;
 	unsigned short int counter; 
 	CategoryContainer categoryContainer;
+	
+	//flags and memeber for the search
+	
+	bool hasFilter;
+	bool reportAll;
+	bool hasFilterDontReportAll;
+
+	int filterMaxGen;
+	int iterationMaxGen;
+		
+	LifeState* init;
+	LifeState* afterCatalyst;
+	LifeState* catalysts;
 	
 	void Init(char* inputFile)
 	{
@@ -718,6 +731,19 @@ public:
 			total++;
 			
 		fullReport = "x = 0, y = 0, rule = B3/S23\n";
+		
+		hasFilter = params.targetFilter.size() > 0;
+		reportAll = params.fullReportFile.length() != 0;
+		hasFilterDontReportAll = hasFilter && !reportAll;
+
+		filterMaxGen = FilterMaxGen();
+		iterationMaxGen = params.maxGen;
+		numIters = numIters;
+		
+		init = NewState();
+		afterCatalyst = NewState();
+		catalysts = NewState();
+	
 	}
 		
 	int FilterMaxGen()
@@ -972,6 +998,115 @@ public:
 		
 		return true;
 	}
+	
+	void UpdateResults()
+	{
+
+		int minIter = LastNonActiveGeneration();
+		
+		//Activation before first generation allowed to be activated
+		if(minIter <  params.startGen || minIter >= params.lastGen)
+			return;
+		
+		//Place catalysts first and check if they collide. 
+		New();
+		
+		PutItersState();
+		
+		if(CatalystCollide() == YES)
+			return;
+	
+		PutState(preIterated[minIter]);
+		
+		//Initial searcher countters for absense and activation
+		InitActivationCounters();
+		
+		int surviveCount = 0;
+
+		for(int i = minIter; i < iterationMaxGen; i++)
+		{
+			Run(1);	
+			
+			//Fail if some catalyst is idle for too long - updates the counters for them otherwise. 
+			if(UpdateActivationCountersFail())
+				break;
+				
+			//const bool optimization - will skip this always. 
+			if(hasFilterDontReportAll)
+			{
+				//Validate filters if any of them exist. Will validate on current gen of GlobalState
+				if(FilterForCurrentGenFail())
+					break;
+			}
+			
+			if(IsAllActivated())
+				surviveCount++;
+			else
+				surviveCount = 0;
+			
+			//If everything was actuvated and stable for stableInterval then report. 
+			if(surviveCount >= params.stableInterval)
+			{
+				bool valid = true; 
+				
+				int genSurvive; 
+				
+				for(genSurvive = i; genSurvive < iterationMaxGen; genSurvive++)
+				{
+					Run(1);
+					
+					if(UpdateActivationCountersFail())
+						break;
+			
+				}
+				//If has fitlter validate them;
+				if(hasFilter)
+				{
+					PutCurrentState();
+					valid = ValidateFilters(filterMaxGen);
+				}
+				
+				if(!valid)
+					break;
+					
+				if(HasForbidden(i + 3))
+					break;
+					
+				//If all filters validated update results
+				if(valid)
+				{
+					ClearData(catalysts);
+					ClearData(init);
+					ClearData(afterCatalyst);
+					
+					New();
+					PutItersState();
+					
+					Copy(catalysts, GlobalState, COPY);
+					PutCurrentState();
+					Copy(init, GlobalState, COPY);
+					Run(i - params.stableInterval + 2);
+					Copy(afterCatalyst, GlobalState, COPY);
+					
+					categoryContainer.Add(init, afterCatalyst, catalysts, iters, i - params.stableInterval + 2, genSurvive);
+					PutCurrentState();
+					result.append(GetRLE(GlobalState));
+					result.append("100$");
+					found++;
+				}
+				
+				//if reportAll - ignore filters and update fullReport
+				if(reportAll)
+				{
+					PutCurrentState();
+					
+					fullReport.append(GetRLE(GlobalState));
+					fullReport.append("100$");
+				}
+				break;
+			}
+		}
+	}
 };
 
 class CategoryManipulator
@@ -989,25 +1124,14 @@ int main (int argc, char *argv[])
 	
 	//LifeAPI initialization. 
 	New();
-	LifeState* init = NewState();
-	LifeState* afterCatalyst = NewState();
-	LifeState* catalysts = NewState();
 	
-	SearchSetup setup; 
-	setup.Init(argv[1]);
-	
-	//optimization to use const in if - compiler should optimize and skip
-	const bool validateWH = setup.params.maxW > 0 && setup.params.maxH > 0;
-	const bool hasFilter = setup.params.targetFilter.size() > 0;
-	const bool reportAll = setup.params.fullReportFile.length() != 0;
-	const bool hasFilterDontReportAll = hasFilter && !reportAll;
-
-	const int filterMaxGen = setup.FilterMaxGen();
-	const int iterationMaxGen = setup.params.maxGen;
-	const int numIters = setup.numIters;
+	CatalystSearcher searcher; 
+	searcher.Init(argv[1]);
+	const bool validateWH = searcher.params.maxW > 0 && searcher.params.maxH > 0;
+	const int numIters = searcher.numIters;
 	//Main loop of search on iters
 	do{
-		int valid = Validate(&setup.iters[0], numIters); 
+		int valid = Validate(&searcher.iters[0], numIters); 
 		
 		if(valid == NO)
 			continue;
@@ -1015,127 +1139,25 @@ int main (int argc, char *argv[])
 		//width-height validation enabled
 		if(validateWH)
 		{
-			valid = setup.ValidateMinWidthHeight();
+			valid = searcher.ValidateMinWidthHeight();
 		}
 		
-		setup.IncreaseIndexAndReport();
+		searcher.IncreaseIndexAndReport();
 		
 		//Valid remains YES after width-height Validation
 		if(valid == NO)
 			continue;
 		
-		int minIter = setup.LastNonActiveGeneration();
+		searcher.UpdateResults();
 		
-		//Activation before first generation allowed to be activated
-		if(minIter <  setup.params.startGen || minIter >= setup.params.lastGen)
-			continue;
-		
-		//Place catalysts first and check if they collide. 
-		New();
-		
-		setup.PutItersState();
-		
-		if(setup.CatalystCollide() == YES)
-			continue;
-	
-		PutState(setup.preIterated[minIter]);
-		
-		//Initial setup countters for absense and activation
-		setup.InitActivationCounters();
-		
-		int surviveCount = 0;
-
-		for(int i = minIter; i < iterationMaxGen; i++)
-		{
-			Run(1);	
-			
-			//Fail if some catalyst is idle for too long - updates the counters for them otherwise. 
-			if(setup.UpdateActivationCountersFail())
-				break;
-				
-			//const bool optimization - will skip this always. 
-			if(hasFilterDontReportAll)
-			{
-				//Validate filters if any of them exist. Will validate on current gen of GlobalState
-				if(setup.FilterForCurrentGenFail())
-					break;
-			}
-			
-			if(setup.IsAllActivated())
-				surviveCount++;
-			else
-				surviveCount = 0;
-			
-			//If everything was actuvated and stable for stableInterval then report. 
-			if(surviveCount >= setup.params.stableInterval)
-			{
-				bool valid = true; 
-				
-				int genSurvive; 
-				
-				for(genSurvive = i; genSurvive < iterationMaxGen; genSurvive++)
-				{
-					Run(1);
-					
-					if(setup.UpdateActivationCountersFail())
-						break;
-			
-				}
-				//If has fitlter validate them;
-				if(hasFilter)
-				{
-					setup.PutCurrentState();
-					valid = setup.ValidateFilters(filterMaxGen);
-				}
-				
-				if(!valid)
-					break;
-					
-				if(setup.HasForbidden(i + 3))
-					break;
-					
-				//If all filters validated update results
-				if(valid)
-				{
-					ClearData(catalysts);
-					ClearData(init);
-					ClearData(afterCatalyst);
-					
-					New();
-					setup.PutItersState();
-					
-					Copy(catalysts, GlobalState, COPY);
-					setup.PutCurrentState();
-					Copy(init, GlobalState, COPY);
-					Run(i - setup.params.stableInterval + 2);
-					Copy(afterCatalyst, GlobalState, COPY);
-					
-					setup.categoryContainer.Add(init, afterCatalyst, catalysts, setup.iters, i - setup.params.stableInterval + 2, genSurvive);
-					setup.PutCurrentState();
-					setup.result.append(GetRLE(GlobalState));
-					setup.result.append("100$");
-					setup.found++;
-				}
-				
-				//if reportAll - ignore filters and update fullReport
-				if(reportAll)
-				{
-					setup.PutCurrentState();
-					
-					setup.fullReport.append(GetRLE(GlobalState));
-					setup.fullReport.append("100$");
-				}
-				break;
-			}
-		}
-	}while(Next(&setup.iters[0], numIters, NO));
+	}while(Next(&searcher.iters[0], numIters, NO));
 	
 	//Print report one final time (update files with the final results). 
-	setup.Report();
+	searcher.Report();
 	
 	printf("\n\nFINISH\n");
 	clock_t end = clock();
-	printf("Total elapsed time: %f seconds\n", (double)(end - setup.begin) / CLOCKS_PER_SEC);
+	printf("Total elapsed time: %f seconds\n", (double)(end - searcher.begin) / CLOCKS_PER_SEC);
 
 	getchar();
 }
