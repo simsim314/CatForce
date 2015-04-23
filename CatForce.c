@@ -455,8 +455,9 @@ public:
 	//iters state in form of integers
 	std::vector<int> params; 
 	int maxGenSurvive;
+	int firstGenSurvive;
 	
-	SearchResult(LifeState* initState, const std::vector<LifeIterator*>& iters, int genSurvive)
+	SearchResult(LifeState* initState, const std::vector<LifeIterator*>& iters, int firstGenSurviveIn, int genSurvive)
 	{
 		init = NewState();
 		Copy(init, initState, COPY);
@@ -469,6 +470,7 @@ public:
 		}
 		
 		maxGenSurvive = genSurvive;
+		firstGenSurvive = firstGenSurviveIn;
 	}
 	
 	void SetState(std::vector<LifeIterator*>& iters, int startIdx)
@@ -566,7 +568,7 @@ public:
 		tempState = NewState();
 	}
 	
-	void Add(LifeState* init, LifeState* afterCatalyst, LifeState* catalysts, const std::vector<LifeIterator*>& iters, int genSurvive)
+	void Add(LifeState* init, LifeState* afterCatalyst, LifeState* catalysts, const std::vector<LifeIterator*>& iters, int firstGenSurvive, int genSurvive)
 	{
 		LifeState* result = NewState();
 		
@@ -579,7 +581,7 @@ public:
 		
 			if(categories[i]->BelongsTo(result))
 			{
-				categories[i]->Add(new SearchResult(init, iters, genSurvive));
+				categories[i]->Add(new SearchResult(init, iters, firstGenSurvive, genSurvive));
 				return;
 			}
 		}
@@ -588,7 +590,7 @@ public:
 		Copy(categoryKey, afterCatalyst, COPY);
 		Copy(categoryKey, catalysts, XOR);
 		
-		categories.push_back(new Category(categoryKey, new SearchResult(init, iters, genSurvive), catDelta));
+		categories.push_back(new Category(categoryKey, new SearchResult(init, iters, firstGenSurvive, genSurvive), catDelta));
 	}
 	
 	void Sort()
@@ -753,12 +755,6 @@ public:
 		//resultsFile.close();
 		
 		categoryContainer.Sort();
-		
-		
-		//DEBUG
-		for(int g = 0; g < categoryContainer.categories[2]->results.size(); g++)
-			std::cout << "A: " << categoryContainer.categories[2]->results[g]->maxGenSurvive << std::endl;
-		//END DEBUG
 		
 		std::ofstream catResultsFile(params.outputFile.c_str());
 		catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
@@ -1114,7 +1110,7 @@ int main (int argc, char *argv[])
 					Run(i - setup.params.stableInterval + 2);
 					Copy(afterCatalyst, GlobalState, COPY);
 					
-					setup.categoryContainer.Add(init, afterCatalyst, catalysts, setup.iters, genSurvive);
+					setup.categoryContainer.Add(init, afterCatalyst, catalysts, setup.iters, i - setup.params.stableInterval + 2, genSurvive);
 					setup.PutCurrentState();
 					setup.result.append(GetRLE(GlobalState));
 					setup.result.append("100$");
