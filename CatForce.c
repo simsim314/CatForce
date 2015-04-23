@@ -445,6 +445,61 @@ std::string GetRLE(const std::vector<std::vector<int> >& life2d)
 	return result.str();
 }
 
+class SearchResult
+{
+public:
+	//Saved for the report
+	LifeState* init;
+	
+	//iters state in form of integers
+	std::vector<int> params; 
+	
+	SearchResult(LifeState* initState, const std::vector<LifeIterator*>& iters)
+	{
+		init = NewState();
+		Copy(init, initState, COPY);
+		
+		for(int i = 0; i < iters.size(); i++)
+		{
+			params.push_back(iters[i]->s);
+			params.push_back(iters[i]->x);
+			params.push_back(iters[i]->y);
+		}
+	}
+	
+	void SetState(std::vector<LifeIterator*>& iters, int startIdx)
+	{
+		int idx = startIdx;
+		for(int i = 0; i < params.size(); i+=3)
+		{
+			iters[idx]->s = params[i];
+			iters[idx]->x = params[i + 1];
+			iters[idx]->y = params[i + 2];
+			idx++;
+		}
+	}
+	
+};
+
+class Category
+{
+public:
+	LifeState* categoryKey;
+	std::vector<SearchResult*> results;
+	
+	Category(LifeState* catalystRemoved, SearchResult* firstResult)
+	{
+		categoryKey = NewState();
+		Copy(categoryKey, catalystRemoved, COPY);
+		results.push_back(firstResult);
+	}
+	
+	void Add(SearchResult* result)
+	{
+		results.push_back(result);
+	}
+};
+
 class CategoryContainer
 {
 public:
