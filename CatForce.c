@@ -473,9 +473,10 @@ public:
 		firstGenSurvive = firstGenSurviveIn;
 	}
 	
-	void SetState(std::vector<LifeIterator*>& iters, int startIdx)
+	int SetIters(std::vector<LifeIterator*>& iters, const int& startIdx)
 	{
 		int idx = startIdx;
+		
 		for(int i = 0; i < params.size(); i+=3)
 		{
 			iters[idx]->s = params[i];
@@ -483,6 +484,8 @@ public:
 			iters[idx]->y = params[i + 2];
 			idx++;
 		}
+		
+		return startIdx + params.size();
 	}
 	
 	~SearchResult (void) 
@@ -729,14 +732,8 @@ public:
 		XYStartGenPerState(targets, pat, params, states, statexyGen);
 		
 		PreIteratePat(pat, preIterated, params);
-		
-		for(int i = 0; i < numIters; i++)
-		{
-			iters.push_back(NewIterator(&states[0], params.searchArea[0], params.searchArea[1], params.searchArea[2], params.searchArea[3], states.size()));
-			activated.push_back(0);
-			absentCount.push_back(0);
-		}
-		
+		AddIterators(numIters);
+
 		current = clock();
 		idx = 0; 
 		found = 0; 
@@ -776,7 +773,17 @@ public:
 		catalysts = NewState();
 	
 	}
-		
+	
+	void AddIterators(int num)
+	{
+		for(int i = 0; i < num; i++)
+		{
+			iters.push_back(NewIterator(&states[0], params.searchArea[0], params.searchArea[1], params.searchArea[2], params.searchArea[3], states.size()));
+			activated.push_back(0);
+			absentCount.push_back(0);
+		}
+	}
+	
 	int FilterMaxGen()
 	{
 		int maxGen = -1;
@@ -1146,7 +1153,6 @@ public:
 
 	std::vector<SearchResult*> base;
 	std::vector<SearchResult*> cur;
-	
 	CatalystSearcher* searcher; 
 	
 	CategoryMultiplicator(CatalystSearcher* bruteSearch)
@@ -1162,10 +1168,29 @@ public:
 		
 		searcher = bruteSearch;
 		bruteSearch->categoryContainer = new CategoryContainer();
+		bruteSearch->AddIterators(bruteSearch->numIters);
 	}
 
 	void CartesianMultiplication()
 	{
+		for(int i = 0; i < base.size(); i++)
+		{
+			int idx = base[i]->SetIters(searcher->iters, 0);
+			int baselast = base[i]->maxGenSurvive;
+			int basefirst = base[i]->firstGenSurvive;
+	
+			for(int j = 0; j < cur.size(); j++)
+			{	
+				int curlast = cur[j]->maxGenSurvive;
+				int curfirst = cur[j]->firstGenSurvive;
+				
+				if(curlast < basefirst || baselast < curfirst)
+					continue;
+				
+				cur[j]->SetIters(searcher->iters, idx);
+				searcher->UpdateResults();
+			}
+		}
 		
 	}
 };
