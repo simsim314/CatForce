@@ -1049,7 +1049,7 @@ int main (int argc, char *argv[])
 					valid = setup.ValidateFilters(filterMaxGen);
 				}
 				
-				if(setup.HasForbidden(i))
+				if(setup.HasForbidden(i + 3))
 					break;
 					
 				//If all filters validated update results
