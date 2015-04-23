@@ -483,33 +483,66 @@ public:
 
 class Category
 {
+private: 
+	LifeState* tempCat;
+	LifeState* tempTest;
+	int catDelta; 
+	
 public:
 	LifeState* categoryKey;
 	std::vector<SearchResult*> results;
 	
-	Category(LifeState* catalystRemoved, SearchResult* firstResult)
+	Category(LifeState* catalystRemoved, SearchResult* firstResult, int catDeltaIn)
 	{
 		categoryKey = NewState();
 		Copy(categoryKey, catalystRemoved, COPY);
 		results.push_back(firstResult);
+		catDelta = catDeltaIn;
+		tempCat = NewState();
+		tempTest = NewState();
 	}
 	
 	void Add(SearchResult* result)
 	{
 		results.push_back(result);
 	}
+	
+	bool BelongsTo(LifeState* test)
+	{
+		ClearData(tempCat);
+		Copy(tempCat, categoryKey, COPY);
+		
+		ClearData(tempTest);
+		Copy(tempTest, test, COPY);
+		
+		if(tempTest->gen > tempCat->gen)
+			Evolve(tempCat, tempTest->gen - tempCat->gen);
+		else if(tempTest->gen < tempCat->gen)
+			Evolve(tempTest, tempCat->gen - tempTest->gen);
+		
+		for(int i = 0; i < catDelta; i++)
+		{
+			if(AreEqual(tempTest, tempCat) == YES)
+				return true;
+			
+			Evolve(tempTest, 1);
+			Evolve(tempCat, 1);
+		}
+		
+		return false;
+	}
 };
 
 class CategoryContainer
 {
 public:
-	std::vector<std::pair<LifeState*, std::vector<LifeState*> > > categories;
-	int catDelta; 
+	std::vector<Category*> categories;
 	LifeState* tempState;
+	int catDelta;
 	
 	CategoryContainer()
 	{
-		catDelta = 5;
+		catDelta = 14;
 		tempState = NewState();
 	}
 	
@@ -519,43 +552,20 @@ public:
 		tempState = NewState();
 	}
 	
-	bool SameCategory(LifeState* a, LifeState* b)
-	{
-		if(a->gen > b->gen)
-			Evolve(b, a->gen - b->gen);
-		else if(a->gen < b->gen)
-			Evolve(a, b->gen - a->gen);
-		
-		for(int i = 0; i < catDelta; i++)
-		{
-			if(AreEqual(a, b) == YES)
-				return true;
-			
-			Evolve(a, 1);
-			Evolve(b, 1);
-		}
-		
-		return false;
-	}
-	
-	void Add(LifeState* init, LifeState* afterCatalyst, LifeState* catalysts)
+	void Add(LifeState* init, LifeState* afterCatalyst, LifeState* catalysts, const std::vector<LifeIterator*>& iters)
 	{
 		LifeState* result = NewState();
-			
+		
+		ClearData(result);
+		Copy(result, afterCatalyst, COPY);
+		Copy(result, catalysts, XOR);
+		
 		for(int i = 0; i < categories.size(); i++)
 		{
-			ClearData(result);
-			Copy(result, afterCatalyst, COPY);
-			Copy(result, catalysts, XOR);
-			ClearData(tempState);
-			Copy(tempState, categories[i].first, COPY);
-			
-			if(SameCategory(tempState, result))
+		
+			if(categories[i]->BelongsTo(result))
 			{
-				std::vector<LifeState*>* vec = &categories[i].second;
-				ClearData(result);
-				Copy(result, init, COPY);
-				vec->push_back(result);
+				categories[i]->Add(new SearchResult(init, iters));
 				return;
 			}
 		}
@@ -564,11 +574,7 @@ public:
 		Copy(categoryKey, afterCatalyst, COPY);
 		Copy(categoryKey, catalysts, XOR);
 		
-		ClearData(result);
-		Copy(result, init, COPY);	
-		std::vector<LifeState*> categoryVec; 
-		categoryVec.push_back(result);
-		categories.push_back(std::pair<LifeState*, std::vector<LifeState*> >(categoryKey, categoryVec));
+		categories.push_back(new Category(categoryKey, new SearchResult(init, iters), catDelta));
 	}
 	
 	std::string CategoriesRLE()
@@ -577,10 +583,10 @@ public:
 		
 		for(int i = 0; i < categories.size(); i++)
 		{
-			std::vector<LifeState*>* vec = &(categories[i].second);
-			if(vec->size() > largestCategory)
-				largestCategory = vec->size();
+			if(categories[i]->results.size() > largestCategory)
+				largestCategory = categories[i]->results.size();
 		}
+		//Size of LifeState 64x64 + 35 for extra margin. 
 		const int Dist = 35 + 64; 
 		
 		int width = Dist * largestCategory;
@@ -599,12 +605,12 @@ public:
 		
 		for(int cat = 0; cat < categories.size(); cat++)
 		{
-			const std::vector<LifeState*>& vecCat = categories[cat].second;
+			const std::vector<SearchResult*>& vecRes = categories[cat]->results;
 			
-			for(int l = 0; l < vecCat.size(); l++)
+			for(int l = 0; l < vecRes.size(); l++)
 				for(int j = 0; j < N; j++)
 					for(int i = 0; i < N; i++)
-						vec[Dist * l + i][Dist * cat + j] = Get(i, j, vecCat[l]->state);
+						vec[Dist * l + i][Dist * cat + j] = Get(i, j, vecRes[l]->init->state);
 			
 		}
 		
@@ -730,7 +736,6 @@ public:
 		catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
 		catResultsFile << cats.CategoriesRLE();
 		catResultsFile.close();
-		
 		
 		if(params.fullReportFile.length() != 0)
 		{
@@ -1061,7 +1066,7 @@ int main (int argc, char *argv[])
 					Copy(init, GlobalState, COPY);
 					Run(i - setup.params.stableInterval + 2);
 					Copy(afterCatalyst, GlobalState, COPY);
-					setup.cats.Add(init, afterCatalyst, catalysts);
+					setup.cats.Add(init, afterCatalyst, catalysts, setup.iters);
 					setup.PutCurrentState();
 					setup.result.append(GetRLE(GlobalState));
 					setup.result.append("100$");
