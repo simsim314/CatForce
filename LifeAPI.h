@@ -34,6 +34,12 @@ typedef struct
 	
 } LifeString;
 
+void FreeString(LifeString* string)
+{
+	free(string->value);
+	free(string);
+}
+
 LifeString* NewString()
 {
 	LifeString* result = (LifeString*)(malloc(sizeof(LifeString)));
@@ -370,6 +376,12 @@ LifeState* NewState()
 	ClearData(result);
 	
 	return result;
+}
+
+void FreeState(LifeState* state)
+{
+	FreeString(state->emittedGliders);
+	free(state);
 }
 
 int AreEqual(LifeState* pat1, LifeState* pat2)
@@ -785,8 +797,8 @@ int Contains(LifeTarget* target)
 
 void FreeTarget(LifeTarget* iter)
 {
-	free(iter -> wanted);
-	free(iter -> unwanted);
+	FreeState(iter -> wanted);
+	FreeState(iter -> unwanted);
 	
 	free(iter);
 }
@@ -1606,7 +1618,7 @@ int Next(LifeIterator *iter1[], int numIters)
 void FreeIterator(LifeIterator* iter)
 {
 	for(int i = 0; i < iter->s; i++)
-		free(iter->States[i]);
+		FreeState(iter->States[i]);
 		
 	free(iter);
 }

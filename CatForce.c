@@ -485,6 +485,10 @@ public:
 		}
 	}
 	
+	~SearchResult (void) 
+	{ 
+		FreeState(init);
+	}
 };
 
 class Category
@@ -547,6 +551,26 @@ public:
 	{
 		 std::sort (results.begin(), results.end(), Category::CompareSearchResult);   
 	}
+	
+	void RemoveTail()
+	{
+		if(results.size() <= 1)
+			return;
+			
+		for(int i = 1; i < results.size(); i++)
+			delete results[i];
+		
+		results.erase(results.begin() + 1, results.end());
+	}
+	
+	~Category()
+	{
+		FreeState(tempCat);
+		FreeState(tempTest);
+
+		for(int i = 0; i < results.size(); i++)
+			delete results[i];
+	}
 };
 
 class CategoryContainer
@@ -597,6 +621,12 @@ public:
 	{
 		for(int i = 0; i < categories.size(); i++)
 			categories[i]->Sort();
+	}
+	
+	void RemoveTail()
+	{
+		for(int i = 0; i < categories.size(); i++)
+			categories[i]->RemoveTail();
 	}
 	
 	std::string CategoriesRLE()
@@ -666,7 +696,7 @@ public:
 	long long total; 
 	std::string fullReport;
 	unsigned short int counter; 
-	CategoryContainer categoryContainer;
+	CategoryContainer* categoryContainer;
 	
 	//flags and memeber for the search
 	
@@ -688,6 +718,7 @@ public:
 		InitCatalysts(inputFile, states, forbiddenTargets, maxSurvive, params);
 		pat =  NewState(params.pat.c_str(), params.xPat, params.yPat);
 		numIters = params.numCatalysts;
+		categoryContainer = new CategoryContainer();
 		
 		for(int i = 0; i < params.targetFilter.size(); i++)
 			targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(), params.filterdx[i], params.filterdy[i]));
@@ -769,7 +800,7 @@ public:
 		if(percent > 0)
 			estimation = (sec * 100) / percent;
 			
-		std::cout << std::setprecision(1)  << std::fixed << percent << "%," <<idx / 1000000 << "M/"  << total << "M, cats/find: " << categoryContainer.categories.size() << "/" << found <<", now: ";
+		std::cout << std::setprecision(1)  << std::fixed << percent << "%," <<idx / 1000000 << "M/"  << total << "M, cats/find: " << categoryContainer->categories.size() << "/" << found <<", now: ";
 		PrintTime(sec);
 		std::cout <<", est: ";
 		PrintTime(estimation);
@@ -780,11 +811,11 @@ public:
 		//resultsFile << result;
 		//resultsFile.close();
 		
-		categoryContainer.Sort();
+		categoryContainer->Sort();
 		
 		std::ofstream catResultsFile(params.outputFile.c_str());
 		catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
-		catResultsFile << categoryContainer.CategoriesRLE();
+		catResultsFile << categoryContainer->CategoriesRLE();
 		catResultsFile.close();
 		
 		if(params.fullReportFile.length() != 0)
@@ -1088,7 +1119,7 @@ public:
 					Run(i - params.stableInterval + 2);
 					Copy(afterCatalyst, GlobalState, COPY);
 					
-					categoryContainer.Add(init, afterCatalyst, catalysts, iters, i - params.stableInterval + 2, genSurvive);
+					categoryContainer->Add(init, afterCatalyst, catalysts, iters, i - params.stableInterval + 2, genSurvive);
 					PutCurrentState();
 					result.append(GetRLE(GlobalState));
 					result.append("100$");
@@ -1109,9 +1140,34 @@ public:
 	}
 };
 
-class CategoryManipulator
+class CategoryMultiplicator 
 {
+public:
 
+	std::vector<SearchResult*> base;
+	std::vector<SearchResult*> cur;
+	
+	CatalystSearcher* searcher; 
+	
+	CategoryMultiplicator(CatalystSearcher* bruteSearch)
+	{
+		bruteSearch->categoryContainer->Sort();
+		bruteSearch->categoryContainer->RemoveTail();
+		
+		for(int i = 0; i < bruteSearch->categoryContainer->categories.size();i++)
+		{
+			base.push_back(bruteSearch->categoryContainer->categories[i]->results[0]);
+			cur.push_back(bruteSearch->categoryContainer->categories[i]->results[0]);
+		}
+		
+		searcher = bruteSearch;
+		bruteSearch->categoryContainer = new CategoryContainer();
+	}
+
+	void CartesianMultiplication()
+	{
+		
+	}
 };
 
 int main (int argc, char *argv[]) 
