@@ -6,7 +6,7 @@ num-catalyst 1
 stable-interval 1
 
 --search area---
-search-area -20 -20 55 55
+search-area -30 -30 60 60
 fit-in-width-height 12 8
 
 -pattern--

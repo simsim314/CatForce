@@ -9,6 +9,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <iomanip>
+#include <algorithm>
 
 const int none[] = {1, 0, 0, 1};
 const int flipX[] = {-1, 0, 0, 1};
@@ -453,8 +454,9 @@ public:
 	
 	//iters state in form of integers
 	std::vector<int> params; 
+	int maxGenSurvive;
 	
-	SearchResult(LifeState* initState, const std::vector<LifeIterator*>& iters)
+	SearchResult(LifeState* initState, const std::vector<LifeIterator*>& iters, int genSurvive)
 	{
 		init = NewState();
 		Copy(init, initState, COPY);
@@ -465,6 +467,8 @@ public:
 			params.push_back(iters[i]->x);
 			params.push_back(iters[i]->y);
 		}
+		
+		maxGenSurvive = genSurvive;
 	}
 	
 	void SetState(std::vector<LifeIterator*>& iters, int startIdx)
@@ -531,6 +535,16 @@ public:
 		
 		return false;
 	}
+	
+	static bool CompareSearchResult(SearchResult* a, SearchResult* b) 
+	{
+		return a->maxGenSurvive > b->maxGenSurvive;
+	}
+	
+	void Sort()
+	{
+		 std::sort (results.begin(), results.end(), Category::CompareSearchResult);   
+	}
 };
 
 class CategoryContainer
@@ -552,7 +566,7 @@ public:
 		tempState = NewState();
 	}
 	
-	void Add(LifeState* init, LifeState* afterCatalyst, LifeState* catalysts, const std::vector<LifeIterator*>& iters)
+	void Add(LifeState* init, LifeState* afterCatalyst, LifeState* catalysts, const std::vector<LifeIterator*>& iters, int genSurvive)
 	{
 		LifeState* result = NewState();
 		
@@ -565,7 +579,7 @@ public:
 		
 			if(categories[i]->BelongsTo(result))
 			{
-				categories[i]->Add(new SearchResult(init, iters));
+				categories[i]->Add(new SearchResult(init, iters, genSurvive));
 				return;
 			}
 		}
@@ -574,7 +588,13 @@ public:
 		Copy(categoryKey, afterCatalyst, COPY);
 		Copy(categoryKey, catalysts, XOR);
 		
-		categories.push_back(new Category(categoryKey, new SearchResult(init, iters), catDelta));
+		categories.push_back(new Category(categoryKey, new SearchResult(init, iters, genSurvive), catDelta));
+	}
+	
+	void Sort()
+	{
+		for(int i = 0; i < categories.size(); i++)
+			categories[i]->Sort();
 	}
 	
 	std::string CategoriesRLE()
@@ -644,7 +664,7 @@ public:
 	long long total; 
 	std::string fullReport;
 	unsigned short int counter; 
-	CategoryContainer cats;
+	CategoryContainer categoryContainer;
 	
 	void Init(char* inputFile)
 	{
@@ -721,7 +741,7 @@ public:
 		if(percent > 0)
 			estimation = (sec * 100) / percent;
 			
-		std::cout << std::setprecision(1)  << std::fixed << percent << "%," <<idx / 1000000 << "M/"  << total << "M, cats/find: " << cats.categories.size() << "/" << found <<", now: ";
+		std::cout << std::setprecision(1)  << std::fixed << percent << "%," <<idx / 1000000 << "M/"  << total << "M, cats/find: " << categoryContainer.categories.size() << "/" << found <<", now: ";
 		PrintTime(sec);
 		std::cout <<", est: ";
 		PrintTime(estimation);
@@ -732,9 +752,17 @@ public:
 		//resultsFile << result;
 		//resultsFile.close();
 		
+		categoryContainer.Sort();
+		
+		
+		//DEBUG
+		for(int g = 0; g < categoryContainer.categories[2]->results.size(); g++)
+			std::cout << "A: " << categoryContainer.categories[2]->results[g]->maxGenSurvive << std::endl;
+		//END DEBUG
+		
 		std::ofstream catResultsFile(params.outputFile.c_str());
 		catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
-		catResultsFile << cats.CategoriesRLE();
+		catResultsFile << categoryContainer.CategoriesRLE();
 		catResultsFile.close();
 		
 		if(params.fullReportFile.length() != 0)
@@ -950,6 +978,11 @@ public:
 	}
 };
 
+class CategoryManipulator
+{
+
+};
+
 int main (int argc, char *argv[]) 
 {
 	if(argc < 2)
@@ -1042,6 +1075,16 @@ int main (int argc, char *argv[])
 			{
 				bool valid = true; 
 				
+				int genSurvive; 
+				
+				for(genSurvive = i; genSurvive < iterationMaxGen; genSurvive++)
+				{
+					Run(1);
+					
+					if(setup.UpdateActivationCountersFail())
+						break;
+			
+				}
 				//If has fitlter validate them;
 				if(hasFilter)
 				{
@@ -1049,24 +1092,29 @@ int main (int argc, char *argv[])
 					valid = setup.ValidateFilters(filterMaxGen);
 				}
 				
+				if(!valid)
+					break;
+					
 				if(setup.HasForbidden(i + 3))
 					break;
 					
 				//If all filters validated update results
 				if(valid)
 				{
-					New();
-					setup.PutItersState();
 					ClearData(catalysts);
 					ClearData(init);
 					ClearData(afterCatalyst);
+					
+					New();
+					setup.PutItersState();
 					
 					Copy(catalysts, GlobalState, COPY);
 					setup.PutCurrentState();
 					Copy(init, GlobalState, COPY);
 					Run(i - setup.params.stableInterval + 2);
 					Copy(afterCatalyst, GlobalState, COPY);
-					setup.cats.Add(init, afterCatalyst, catalysts, setup.iters);
+					
+					setup.categoryContainer.Add(init, afterCatalyst, catalysts, setup.iters, genSurvive);
 					setup.PutCurrentState();
 					setup.result.append(GetRLE(GlobalState));
 					setup.result.append("100$");
