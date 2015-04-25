@@ -49,6 +49,7 @@ public:
 	std::vector<int> filterdx; 
 	std::vector<int> filterdy; 
 	std::vector<int> filterGen; 
+	bool combineResults;
 	
 	SearchParams()
 	{
@@ -68,6 +69,7 @@ public:
 		maxW = -1;
 		maxH = -1;
 		fullReportFile = "";
+		combineResults = false;
 	}
 };
 
@@ -188,6 +190,7 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 	std::string filter = "filter";
 	std::string maxWH = "fit-in-width-height";
 	std::string fullReport = "full-report";
+	std::string combine = "combine-results";
 	
 	std::string line; 
 	
@@ -273,6 +276,11 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 				params.maxW = atoi(elems[1].c_str());
 				params.maxH = atoi(elems[2].c_str());
 			}			
+			
+			if(elems[0] == combine && elems[1] == "yes")
+			{
+				params.combineResults = true;
+			}
 			
 		}
 		catch(const std::exception& ex)
@@ -464,9 +472,9 @@ public:
 		
 		for(int i = 0; i < iters.size(); i++)
 		{
-			params.push_back(iters[i]->s);
-			params.push_back(iters[i]->x);
-			params.push_back(iters[i]->y);
+			params.push_back(iters[i]->curs);
+			params.push_back(iters[i]->curx);
+			params.push_back(iters[i]->cury);
 		}
 		
 		maxGenSurvive = genSurvive;
@@ -479,15 +487,26 @@ public:
 		
 		for(int i = 0; i < params.size(); i+=3)
 		{
-			iters[idx]->s = params[i];
-			iters[idx]->x = params[i + 1];
-			iters[idx]->y = params[i + 2];
+			iters[idx]->curs = params[i];
+			iters[idx]->curx = params[i + 1];
+			iters[idx]->cury = params[i + 2];
 			idx++;
 		}
 		
-		return startIdx + params.size();
+		return idx;
 	}
 	
+	void Print()
+	{
+		std::cout << "start:" << firstGenSurvive;
+		std::cout << ", finish:" << maxGenSurvive << ", params: ";
+		
+		for(int i = 0; i < params.size(); i++)
+			std::cout << params[i] << ",";
+			
+		std::cout << std::endl;
+	}
+
 	~SearchResult (void) 
 	{ 
 		FreeState(init);
@@ -500,12 +519,14 @@ private:
 	LifeState* tempCat;
 	LifeState* tempTest;
 	int catDelta; 
+	int maxgen;
+	uint64_t hash;
 	
 public:
 	LifeState* categoryKey;
 	std::vector<SearchResult*> results;
 	
-	Category(LifeState* catalystRemoved, SearchResult* firstResult, int catDeltaIn)
+	Category(LifeState* catalystRemoved, SearchResult* firstResult, int catDeltaIn, int maxGen)
 	{
 		categoryKey = NewState();
 		Copy(categoryKey, catalystRemoved, COPY);
@@ -513,6 +534,12 @@ public:
 		catDelta = catDeltaIn;
 		tempCat = NewState();
 		tempTest = NewState();
+		maxgen = maxGen;
+		
+		ClearData(tempCat);
+		Copy(tempCat, categoryKey, COPY);
+		Evolve(tempCat, maxgen - tempCat->gen);
+		hash = GetHash(tempCat);
 	}
 	
 	void Add(SearchResult* result)
@@ -520,8 +547,11 @@ public:
 		results.push_back(result);
 	}
 	
-	bool BelongsTo(LifeState* test)
+	bool BelongsTo(LifeState* test, const uint64_t& testHash)
 	{
+		if(testHash != hash)
+			return false;
+			
 		ClearData(tempCat);
 		Copy(tempCat, categoryKey, COPY);
 		
@@ -547,7 +577,7 @@ public:
 	
 	static bool CompareSearchResult(SearchResult* a, SearchResult* b) 
 	{
-		return a->maxGenSurvive > b->maxGenSurvive;
+		return (a->maxGenSurvive - a->firstGenSurvive) > (b->maxGenSurvive - b->firstGenSurvive);
 	}
 	
 	void Sort()
@@ -574,6 +604,12 @@ public:
 		for(int i = 0; i < results.size(); i++)
 			delete results[i];
 	}
+	
+	void Print()
+	{
+		for(int i = 0; i < results.size(); i++)
+			results[i]->Print();
+	}
 };
 
 class CategoryContainer
@@ -582,17 +618,20 @@ public:
 	std::vector<Category*> categories;
 	LifeState* tempState;
 	int catDelta;
+	int maxgen;
 	
-	CategoryContainer()
+	CategoryContainer(int maxGen)
 	{
 		catDelta = 14;
 		tempState = NewState();
+		maxgen = maxGen + catDelta;
 	}
 	
-	CategoryContainer(int cats)
+	CategoryContainer(int cats, int maxGen)
 	{
 		catDelta = cats;
 		tempState = NewState();
+		maxgen = maxGen + catDelta;
 	}
 	
 	void Add(LifeState* init, LifeState* afterCatalyst, LifeState* catalysts, const std::vector<LifeIterator*>& iters, int firstGenSurvive, int genSurvive)
@@ -603,12 +642,19 @@ public:
 		Copy(result, afterCatalyst, COPY);
 		Copy(result, catalysts, XOR);
 		
+		Evolve(result, maxgen - result->gen);
+		uint64_t hash = GetHash(result);
+		
+		ClearData(result);
+		Copy(result, afterCatalyst, COPY);
+		Copy(result, catalysts, XOR);
+		
 		for(int i = 0; i < categories.size(); i++)
 		{
-		
-			if(categories[i]->BelongsTo(result))
+			if(categories[i]->BelongsTo(result, hash))
 			{
-				categories[i]->Add(new SearchResult(init, iters, firstGenSurvive, genSurvive));
+				if(categories[i]->results[0]->params.size() == 3 * iters.size())
+					categories[i]->Add(new SearchResult(init, iters, firstGenSurvive, genSurvive));
 				return;
 			}
 		}
@@ -617,13 +663,19 @@ public:
 		Copy(categoryKey, afterCatalyst, COPY);
 		Copy(categoryKey, catalysts, XOR);
 		
-		categories.push_back(new Category(categoryKey, new SearchResult(init, iters, firstGenSurvive, genSurvive), catDelta));
+		categories.push_back(new Category(categoryKey, new SearchResult(init, iters, firstGenSurvive, genSurvive), catDelta, maxgen));
 	}
 	
 	void Sort()
 	{
 		for(int i = 0; i < categories.size(); i++)
 			categories[i]->Sort();
+	}
+	
+	void Print()
+	{
+		for(int i = 0; i < categories.size(); i++)
+			categories[i]->Print();
 	}
 	
 	void RemoveTail()
@@ -634,6 +686,7 @@ public:
 	
 	std::string CategoriesRLE()
 	{
+		
 		int largestCategory = 0; 
 		
 		for(int i = 0; i < categories.size(); i++)
@@ -721,7 +774,7 @@ public:
 		InitCatalysts(inputFile, states, forbiddenTargets, maxSurvive, params);
 		pat =  NewState(params.pat.c_str(), params.xPat, params.yPat);
 		numIters = params.numCatalysts;
-		categoryContainer = new CategoryContainer();
+		categoryContainer = new CategoryContainer(params.maxGen);
 		
 		for(int i = 0; i < params.targetFilter.size(); i++)
 			targetFilter.push_back(NewTarget(params.targetFilter[i].c_str(), params.filterdx[i], params.filterdy[i]));
@@ -782,6 +835,8 @@ public:
 			activated.push_back(0);
 			absentCount.push_back(0);
 		}
+		
+		numIters = iters.size();
 	}
 	
 	int FilterMaxGen()
@@ -795,6 +850,14 @@ public:
 		}
 		
 		return maxGen;
+	}
+	
+	void Report(std::string prefix)
+	{
+		std::string temp = params.outputFile;
+		params.outputFile = prefix + params.outputFile;
+		Report();
+		params.outputFile = temp;
 	}
 	
 	void Report()
@@ -1050,7 +1113,6 @@ public:
 		New();
 		
 		PutItersState();
-		
 		if(CatalystCollide() == YES)
 			return;
 	
@@ -1060,7 +1122,8 @@ public:
 		InitActivationCounters();
 		
 		int surviveCount = 0;
-
+		
+		
 		for(int i = minIter; i < iterationMaxGen; i++)
 		{
 			Run(1);	
@@ -1125,7 +1188,7 @@ public:
 					Copy(init, GlobalState, COPY);
 					Run(i - params.stableInterval + 2);
 					Copy(afterCatalyst, GlobalState, COPY);
-					
+
 					categoryContainer->Add(init, afterCatalyst, catalysts, iters, i - params.stableInterval + 2, genSurvive);
 					PutCurrentState();
 					result.append(GetRLE(GlobalState));
@@ -1157,28 +1220,32 @@ public:
 	
 	CategoryMultiplicator(CatalystSearcher* bruteSearch)
 	{
-		bruteSearch->categoryContainer->Sort();
-		bruteSearch->categoryContainer->RemoveTail();
+		searcher = bruteSearch;
+		searcher->categoryContainer->Sort();
+		searcher->categoryContainer->RemoveTail();
 		
-		for(int i = 0; i < bruteSearch->categoryContainer->categories.size();i++)
+		for(int i = 0; i < searcher->categoryContainer->categories.size();i++)
 		{
-			base.push_back(bruteSearch->categoryContainer->categories[i]->results[0]);
-			cur.push_back(bruteSearch->categoryContainer->categories[i]->results[0]);
+			base.push_back(searcher->categoryContainer->categories[i]->results[0]);
+			cur.push_back(searcher->categoryContainer->categories[i]->results[0]);
 		}
 		
-		searcher = bruteSearch;
-		bruteSearch->categoryContainer = new CategoryContainer();
-		bruteSearch->AddIterators(bruteSearch->numIters);
+		searcher->AddIterators(searcher->numIters);
+		searcher->params.stableInterval = 5;
+		
 	}
 
 	void CartesianMultiplication()
 	{
 		for(int i = 0; i < base.size(); i++)
 		{
+			if(i % 5 == 0)
+				std::cout << (100 * i) / base.size() << "%, " << i << "/" << base.size() << std::endl;
+			
 			int idx = base[i]->SetIters(searcher->iters, 0);
 			int baselast = base[i]->maxGenSurvive;
 			int basefirst = base[i]->firstGenSurvive;
-	
+			
 			for(int j = 0; j < cur.size(); j++)
 			{	
 				int curlast = cur[j]->maxGenSurvive;
@@ -1192,6 +1259,23 @@ public:
 			}
 		}
 		
+		searcher->categoryContainer->Sort();
+		searcher->categoryContainer->RemoveTail();
+		
+	}
+	
+	void ReinitializeCurrent(int size, int iters)
+	{
+		cur.clear();
+		
+		for(int i = 0; i < searcher->categoryContainer->categories.size();i++)
+		{
+			if(searcher->categoryContainer->categories[i]->results[0]->params.size() == 3 * size)
+				cur.push_back(searcher->categoryContainer->categories[i]->results[0]);
+		}
+		
+		searcher->params.stableInterval = 10 * size;
+		searcher->AddIterators(iters);
 	}
 };
 
@@ -1236,9 +1320,27 @@ int main (int argc, char *argv[])
 	//Print report one final time (update files with the final results). 
 	searcher.Report();
 	
+	if(searcher.params.combineResults)
+	{
+		int startCatalysts = searcher.numIters;
+		CategoryMultiplicator combined(&searcher);
+		int i = 1; 
+		while(combined.cur.size() > 0)
+		{
+			combined.CartesianMultiplication();
+			
+			std::stringstream ss;
+			ss << "Combined" << ++i;
+
+			searcher.Report(ss.str());
+			combined.ReinitializeCurrent(i, startCatalysts);
+		}
+	}
+	
 	printf("\n\nFINISH\n");
 	clock_t end = clock();
 	printf("Total elapsed time: %f seconds\n", (double)(end - searcher.begin) / CLOCKS_PER_SEC);
 
+	
 	getchar();
 }

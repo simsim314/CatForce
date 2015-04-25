@@ -181,6 +181,18 @@ void SetCell(int x, int y, int val)
 	SetCell(GlobalState, x, y, val);
 }
 
+uint64_t GetHash(LifeState* state)
+{
+	uint64_t result = 0; 
+	
+	for(int i = 0; i < N; i++)
+	{
+		result += CirculateLeft(state->state[i], (int)(i  / 2));
+	}
+	
+	return result;
+}
+
 void ExpandMinMax(int* min, int* max)
 {
 	*min = *min - 2;
@@ -1503,6 +1515,13 @@ void Print(LifeIterator* iter)
 {
 	printf("\n(%d, %d, %d)", iter->curx, iter->cury, iter->curs);
 }
+
+void Print(LifeIterator* iter[], int numIters)
+{
+	for(int i = 0; i < numIters; i++)
+		Print(iter[i]);
+}
+
 void Print(LifeIterator* iter, const char* name)
 {
 	printf("\nSetCurrent(%s, %d, %d, %d);", name, iter->curx, iter->cury, iter->curs);
