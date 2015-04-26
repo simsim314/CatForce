@@ -119,6 +119,8 @@ file name - specify file name for the full-report.
 <output.rle>_Final.rle - the final report. **This is the main output.**
  
  **NOTE** Recomended for use only for num-catalyst = 1/2 more than that not recommended. 
+ 
+ **NOTE** See 4.in file for example. 
 --
 
 Compiled using g++. 
