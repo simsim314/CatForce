@@ -610,6 +610,34 @@ public:
 		for(int i = 0; i < results.size(); i++)
 			results[i]->Print();
 	}
+	
+	std::string RLE()
+	{
+		//36 is extra margin to get 100 
+		const int Dist = 36 + 64; 
+		
+		int width = Dist * results.size();
+		int height = Dist;
+		
+		std::vector<std::vector<int> > vec;
+		
+		for(int i = 0; i < width; i++)
+		{
+			std::vector<int> temp; 
+			
+			for(int j = 0; j < height; j++)
+				temp.push_back(0);
+				
+			vec.push_back(temp);
+		}
+		
+		for(int l = 0; l < results.size(); l++)
+			for(int j = 0; j < N; j++)
+				for(int i = 0; i < N; i++)
+					vec[Dist * l + i][j] = Get(i, j, results[l]->init->state);
+		
+		return GetRLE(vec);
+	}
 };
 
 class CategoryContainer
@@ -686,43 +714,15 @@ public:
 	
 	std::string CategoriesRLE()
 	{
-		
-		int largestCategory = 0; 
-		
+		std::stringstream ss;
+		//Size of LifeState 64x64 + 35 for extra margin. 
 		for(int i = 0; i < categories.size(); i++)
 		{
-			if(categories[i]->results.size() > largestCategory)
-				largestCategory = categories[i]->results.size();
-		}
-		//Size of LifeState 64x64 + 35 for extra margin. 
-		const int Dist = 35 + 64; 
-		
-		int width = Dist * largestCategory;
-		int height = Dist * categories.size();
-		std::vector<std::vector<int> > vec;
-		
-		for(int i = 0; i < width; i++)
-		{
-			std::vector<int> temp; 
-			
-			for(int j = 0; j < height; j++)
-				temp.push_back(0);
-				
-			vec.push_back(temp);
+			ss << categories[i]->RLE();
+			ss << "44$";
 		}
 		
-		for(int cat = 0; cat < categories.size(); cat++)
-		{
-			const std::vector<SearchResult*>& vecRes = categories[cat]->results;
-			
-			for(int l = 0; l < vecRes.size(); l++)
-				for(int j = 0; j < N; j++)
-					for(int i = 0; i < N; i++)
-						vec[Dist * l + i][Dist * cat + j] = Get(i, j, vecRes[l]->init->state);
-			
-		}
-		
-		return GetRLE(vec);
+		return ss.str();
 	}
 };
 
