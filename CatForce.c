@@ -870,7 +870,7 @@ public:
 		params.outputFile = temp;
 	}
 	
-	void Report()
+	void Report(bool saveFile = true)
 	{
 		float percent = (idx / 10000) / (total * 1.0);
 		int sec = (clock() - begin) / CLOCKS_PER_SEC + 1;
@@ -893,16 +893,19 @@ public:
 		
 		categoryContainer->Sort();
 		
-		std::ofstream catResultsFile(params.outputFile.c_str());
-		catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
-		catResultsFile << categoryContainer->CategoriesRLE();
-		catResultsFile.close();
-		
-		if(params.fullReportFile.length() != 0)
+		if(saveFile)
 		{
-			std::ofstream allfile(params.fullReportFile.c_str());
-			allfile << fullReport;
-			allfile.close();
+			std::ofstream catResultsFile(params.outputFile.c_str());
+			catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
+			catResultsFile << categoryContainer->CategoriesRLE();
+			catResultsFile.close();
+			
+			if(params.fullReportFile.length() != 0)
+			{
+				std::ofstream allfile(params.fullReportFile.c_str());
+				allfile << fullReport;
+				allfile.close();
+			}
 		}
 	}
 	
@@ -915,7 +918,7 @@ public:
 		return;
 		
 	}
-	void IncreaseIndexAndReport()
+	void IncreaseIndexAndReport(bool saveFile = true)
 	{
 		counter++; 
 		
@@ -928,7 +931,7 @@ public:
 				if((double)(clock() - current) / CLOCKS_PER_SEC > 10)
 				{
 					current = clock();
-					Report();
+					Report(saveFile);
 				}
 			}
 		}
@@ -1247,8 +1250,7 @@ public:
 	{
 		for(int i = 0; i < base.size(); i++)
 		{
-			if(i % 5 == 0)
-				std::cout << (100 * i) / base.size() << "%, " << i << "/" << base.size() << std::endl;
+			searcher->IncreaseIndexAndReport(false);
 			
 			int idx = base[i]->SetIters(searcher->iters, 0);
 			int baselast = base[i]->maxGenSurvive;
@@ -1314,8 +1316,13 @@ int main (int argc, char *argv[])
 	//LifeAPI initialization. 
 	New();
 	
+	std::cout << "Input: " <<  argv[1] << std::endl << "Initializing please wait..." << std::endl;
+	
 	CatalystSearcher searcher; 
 	searcher.Init(argv[1]);
+	
+	std::cout  << std::endl << "Initialization finished, searching..." << std::endl << std::endl;
+	
 	const bool validateWH = searcher.params.maxW > 0 && searcher.params.maxH > 0;
 	const int numIters = searcher.numIters;
 	//Main loop of search on iters
@@ -1351,6 +1358,7 @@ int main (int argc, char *argv[])
 		int i = 1; 
 		while(combined.cur.size() > 0)
 		{
+			std::cout << "Combining iteration = " << i << std::endl;
 			combined.CartesianMultiplication();
 			
 			std::stringstream ss;
@@ -1360,6 +1368,8 @@ int main (int argc, char *argv[])
 			combined.ReinitializeCurrent(i, startCatalysts);
 		}
 		
+		std::cout << "Final result" << std::endl;
+			
 		combined.RunWithInputParams();
 		searcher.Report("_Final");
 		
