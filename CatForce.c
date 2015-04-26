@@ -762,7 +762,9 @@ public:
 
 	int filterMaxGen;
 	int iterationMaxGen;
-		
+	
+	int surviveCountForUpdate; 
+	
 	LifeState* init;
 	LifeState* afterCatalyst;
 	LifeState* catalysts;
@@ -824,7 +826,15 @@ public:
 		init = NewState();
 		afterCatalyst = NewState();
 		catalysts = NewState();
-	
+		
+		surviveCountForUpdate = params.stableInterval;
+		
+		if(params.combineResults)
+		{
+			surviveCountForUpdate = 1;
+			hasFilter = false;
+			hasFilterDontReportAll = false;
+		}
 	}
 	
 	void AddIterators(int num)
@@ -852,10 +862,10 @@ public:
 		return maxGen;
 	}
 	
-	void Report(std::string prefix)
+	void Report(std::string suffix)
 	{
 		std::string temp = params.outputFile;
-		params.outputFile = prefix + params.outputFile;
+		params.outputFile = params.outputFile + suffix + std::string(".rle");
 		Report();
 		params.outputFile = temp;
 	}
@@ -1146,7 +1156,7 @@ public:
 				surviveCount = 0;
 			
 			//If everything was actuvated and stable for stableInterval then report. 
-			if(surviveCount >= params.stableInterval)
+			if(surviveCount >= surviveCountForUpdate)
 			{
 				bool valid = true; 
 				
@@ -1186,10 +1196,10 @@ public:
 					Copy(catalysts, GlobalState, COPY);
 					PutCurrentState();
 					Copy(init, GlobalState, COPY);
-					Run(i - params.stableInterval + 2);
+					Run(i - surviveCountForUpdate + 2);
 					Copy(afterCatalyst, GlobalState, COPY);
 
-					categoryContainer->Add(init, afterCatalyst, catalysts, iters, i - params.stableInterval + 2, genSurvive);
+					categoryContainer->Add(init, afterCatalyst, catalysts, iters, i - surviveCountForUpdate + 2, genSurvive);
 					PutCurrentState();
 					result.append(GetRLE(GlobalState));
 					result.append("100$");
@@ -1231,8 +1241,6 @@ public:
 		}
 		
 		searcher->AddIterators(searcher->numIters);
-		searcher->params.stableInterval = 5;
-		
 	}
 
 	void CartesianMultiplication()
@@ -1261,7 +1269,6 @@ public:
 		
 		searcher->categoryContainer->Sort();
 		searcher->categoryContainer->RemoveTail();
-		
 	}
 	
 	void ReinitializeCurrent(int size, int iters)
@@ -1274,8 +1281,25 @@ public:
 				cur.push_back(searcher->categoryContainer->categories[i]->results[0]);
 		}
 		
-		searcher->params.stableInterval = 10 * size;
 		searcher->AddIterators(iters);
+	}
+	
+	void RunWithInputParams()
+	{
+		searcher->surviveCountForUpdate = searcher->params.stableInterval;
+		searcher->hasFilter = searcher->params.targetFilter.size() > 0;
+		searcher->reportAll = searcher->params.fullReportFile.length() != 0;
+		searcher->hasFilterDontReportAll = searcher->hasFilter && !(searcher->reportAll);
+		
+		CategoryContainer* found = searcher->categoryContainer;
+		searcher->categoryContainer = new CategoryContainer(searcher->params.maxGen);
+		
+		for(int i = 0; i < found->categories.size(); i++)
+		{
+			searcher->numIters = found->categories[i]->results[0]->SetIters(searcher->iters, 0);
+			searcher->UpdateResults();
+		}
+			
 	}
 };
 
@@ -1330,11 +1354,15 @@ int main (int argc, char *argv[])
 			combined.CartesianMultiplication();
 			
 			std::stringstream ss;
-			ss << "Combined" << ++i;
+			ss << "_Combined_" << ++i;
 
 			searcher.Report(ss.str());
 			combined.ReinitializeCurrent(i, startCatalysts);
 		}
+		
+		combined.RunWithInputParams();
+		searcher.Report("_Final");
+		
 	}
 	
 	printf("\n\nFINISH\n");
