@@ -7,7 +7,7 @@ stable-interval 1
 
 --search area---
 search-area -30 -30 60 60
-fit-in-width-height 12 8
+#fit-in-width-height 12 8
 
 -pattern--
 pat 4bo$2b2o$b2o$o$b5o$2bo!
