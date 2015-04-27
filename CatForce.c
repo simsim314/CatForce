@@ -895,6 +895,8 @@ public:
 		
 		if(saveFile)
 		{
+			std::cout << "Saving " << params.outputFile << std::endl;
+			
 			std::ofstream catResultsFile(params.outputFile.c_str());
 			catResultsFile << "x = 0, y = 0, rule = B3/S23\n";
 			catResultsFile << categoryContainer->CategoriesRLE();
@@ -1248,16 +1250,20 @@ public:
 
 	void CartesianMultiplication()
 	{
+		searcher->total = base.size() * cur.size(); 
+		searcher->idx = 0; 
+		searcher->counter = 0; 
+		
 		for(int i = 0; i < base.size(); i++)
 		{
-			searcher->IncreaseIndexAndReport(false);
-			
 			int idx = base[i]->SetIters(searcher->iters, 0);
 			int baselast = base[i]->maxGenSurvive;
 			int basefirst = base[i]->firstGenSurvive;
 			
 			for(int j = 0; j < cur.size(); j++)
 			{	
+				searcher->IncreaseIndexAndReport(false);
+			
 				int curlast = cur[j]->maxGenSurvive;
 				int curfirst = cur[j]->firstGenSurvive;
 				
@@ -1371,8 +1377,8 @@ int main (int argc, char *argv[])
 		std::cout << "Final result" << std::endl;
 			
 		combined.RunWithInputParams();
-		searcher.Report("_Final");
 		
+		searcher.Report(std::string("_Final"));
 	}
 	
 	printf("\n\nFINISH\n");
