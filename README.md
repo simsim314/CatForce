@@ -35,6 +35,10 @@ CatForce will never iterate after max-gen.
 
 The first gen encounter is allowed. 
 
+`last-gen`
+
+The last gen to wait for some encounter. If no encounter had occured after last-gen the search will move on. 
+
 `num-catalyst`
 
 The number of catalyst to place (note that if you chose 3 catalyst all three of the SLs should be catalysts). 
