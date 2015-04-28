@@ -70,8 +70,8 @@ symmetries-char - character that defines all symmetries the catalyst can be used
 
 -  |   mirror by y.
 -  +   mirror by x, y and both. 
--  /  diagonal mirror
--  x  rotate 90 * k degrees. 
+-  /  diagonal mirror.
+-  x  make for 180 degree symmetrical catalysts.
 -  *  All 8 variations of transformations. 
 
 forbidden is an option that will search for rle in the same location of the catalyst. If forbidden is matched, in any iteration of the potential solution (and on the place of the catalyst), the solution is ommited from the report. You can see forbidden as "catalyst attached filter", i.e. the forbidden pattern is based on catalyst location. 
