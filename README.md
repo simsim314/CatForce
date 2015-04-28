@@ -110,8 +110,6 @@ file name - specify file name for the full-report.
  
  If you don't specify this flag the code will ignore it and report only the results after filter. 
  
- Compilation
- 
  `combine-results yes`
  
  If this feature is enabled the search will at first ignore all filters and survival inputs, and will search all the posible catalysts. Then it will try to combine all the founded catalysts in all possible combinations, and only then will filter by max survive and apply the filters to exclude them from the final report. 
@@ -126,6 +124,8 @@ file name - specify file name for the full-report.
  
  **NOTE** See 4.in file for example. 
  
+ 
+  Compilation
 --
 
 Compiled using g++. 
