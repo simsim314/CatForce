@@ -112,13 +112,13 @@ file name - specify file name for the full-report.
  
  `combine-results yes`
  
- If this feature is enabled the search will at first ignore all filters and survival inputs, and will search all the posible catalysts. Then it will try to combine all the founded catalysts in all possible combinations, and only then will filter by max survive and apply the filters to exclude them from the final report. 
+ If this feature is enabled the search will at first ignore all filters and survival inputs, and will search all the posible catalysts. Then it will try to combine all the found catalysts in all possible combinations, and only then will filter by max survive and apply the filters to exclude them from the final report. 
  
  This feature will generate report as follows: 
  
- <output.rle> - all the possible catalysts. 
- <output.rle>_Combined*.rle - will generate all combined reports. 
-<output.rle>_Final.rle - the final report. **This is the main output.**
+<output.rle> - all the possible catalysts.     
+<output.rle>_Combined*.rle - will generate all combined reports.    
+<output.rle>_Final.rle - the final report. **This is the main output.**    
  
  **NOTE** Recomended for use only for num-catalyst = 1/2 more than that not recommended. 
  
