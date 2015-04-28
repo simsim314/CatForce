@@ -117,8 +117,8 @@ file name - specify file name for the full-report.
  This feature will generate report as follows: 
  
  output.rle - all the possible catalysts.     
- output.rle_Combined*.rle - will generate all combined reports.    
- output.rle_Final.rle - the final report. **This is the main output.**    
+ output.rle\_Combined*.rle - will generate all combined reports.    
+ output.rle\_Final.rle - the final report. **This is the main output.**    
  
  **NOTE** Recomended for use only for num-catalyst = 1/2 more than that not recommended. 
  
