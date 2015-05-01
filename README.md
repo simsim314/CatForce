@@ -7,6 +7,8 @@ It uses brute force search in some area instead of tree search (yet several opti
 
 Another major advantage of this approach is parallelization (which is much harder to implement in tree depth search). 
 
+**NOTE** As LifeAPI CatForce as well is working on 64x64 torus, and uses 64 longs to contain state. So it will works twice faster on 64 bit machines. The torues center is (0, 0) and left upper corner is (-32, -32) and lower right corner is (31,31). It has the same Y axis as golly (y up is negative). X axis is as usual (left negative rigth positive). 
+
 Usage
 --
 
