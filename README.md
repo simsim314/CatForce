@@ -9,7 +9,7 @@ Another major advantage of this approach is parallelization (which is much harde
 
 **NOTE** As LifeAPI CatForce as well is working on 64x64 torus, and uses 64 longs to contain state. So it will works twice faster on 64 bit machines. The torus center is (0, 0) and left upper corner is (-32, -32) and lower right corner is (31,31). It has the same Y axis as golly (y up is negative). X axis is as usual (left negative rigth positive). 
 
-Another feature of LifeAPI preserved in CatForce is eliminating edge gliders. LifeAPI is currently "listening" on the edges of the torus for gliders and removes them. This feature is also true for CatForce. There is an option to access the eliminited glider information, like generation and location, but it seems no one is actually interested in this information at this stage. 
+Another feature of LifeAPI preserved in CatForce is eliminating edge gliders. LifeAPI is currently "listening" on the edges of the torus for gliders and removes them. This feature is also true for CatForce. There is an option to access the eliminated glider information, like generation and location, but it seems no one is actually interested in this information at this stage. 
 
 Usage
 --
