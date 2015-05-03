@@ -114,7 +114,7 @@ file name - specify file name for the full-report.
  
  If you don't specify this flag the code will ignore it and report only the results after filter. 
  
- `combine-results yes`
+ `combine-results yes [<survive-0> <survive-1> <survive-2>]`
  
  If this feature is enabled the search will at first ignore all filters and survival inputs, and will search all the posible catalysts. Then it will try to combine all the found catalysts in all possible combinations, and only then will filter by max survive and apply the filters to exclude them from the final report. 
  
@@ -123,6 +123,10 @@ file name - specify file name for the full-report.
  `output.rle - all the possible catalysts.     `     
  `output.rle_Combined*.rle - will generate all combined reports.    `     
  `output.rle_Final.rle - the final report. **This is the main output.**    `    
+ 
+ Optional survival filter per "combine iteration" are added. Combine works as follows: each time it start from the initial search results (combine by default uses survive count = 1), and tries to add catalyst from those results. Sometimes one could get explosion, if the interaction is very potent. So filter is added to limit the combine, by surviving coung (if something doesn't survive with two catalyst for 5 iterations, it's probably junk - so CatForce will filter it on the second combine iteration and not in the end). 
+ 
+ This allows faster and more efficient combine operation with very potent conduits which otherwise would overflow the system, with many useless catalysts. 
  
  **NOTE** Recomended for use only for num-catalyst = 1/2 more than that not recommended. 
  
