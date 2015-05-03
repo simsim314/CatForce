@@ -50,6 +50,7 @@ public:
 	std::vector<int> filterdy; 
 	std::vector<int> filterGen; 
 	bool combineResults;
+	std::vector<int> combineSurvive; 
 	
 	SearchParams()
 	{
@@ -134,6 +135,12 @@ void CharToTransVec(char ch, std::vector<const int* >& trans)
 	if(ch == '|')
 	{
 		trans.push_back(flipX);
+		return;
+	}
+	
+	if(ch == '-')
+	{
+		trans.push_back(flipY);
 		return;
 	}
 	
@@ -280,6 +287,10 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 			if(elems[0] == combine && elems[1] == "yes")
 			{
 				params.combineResults = true;
+				
+				for(int i = 2; i < elems.size(); i++)
+					params.combineSurvive.push_back(atoi(elems[i].c_str()));
+				
 			}
 			
 		}
@@ -831,9 +842,13 @@ public:
 		
 		if(params.combineResults)
 		{
-			surviveCountForUpdate = 1;
+			if(params.combineSurvive.size() == 0)
+				params.combineSurvive.push_back(1);
+				
+			surviveCountForUpdate = params.combineSurvive[0];
 			hasFilter = false;
 			hasFilterDontReportAll = false;
+
 		}
 	}
 	
@@ -1223,6 +1238,14 @@ public:
 			}
 		}
 	}
+	
+	void SetParamsForCombine(int combineIter)
+	{
+		if(params.combineSurvive.size() - 1 < combineIter)
+			surviveCountForUpdate = params.combineSurvive[params.combineSurvive.size() - 1];
+		else 
+			surviveCountForUpdate = params.combineSurvive[combineIter];
+	}
 };
 
 class CategoryMultiplicator 
@@ -1232,6 +1255,7 @@ public:
 	std::vector<SearchResult*> base;
 	std::vector<SearchResult*> cur;
 	CatalystSearcher* searcher; 
+	int iter; 
 	
 	CategoryMultiplicator(CatalystSearcher* bruteSearch)
 	{
@@ -1246,11 +1270,14 @@ public:
 		}
 		
 		searcher->AddIterators(searcher->numIters);
+		iter = 1;
+		searcher->SetParamsForCombine(iter);
 	}
 
 	void CartesianMultiplication()
 	{
 		searcher->total = base.size() * cur.size(); 
+		searcher->total /= 1000000;
 		searcher->idx = 0; 
 		searcher->counter = 0; 
 		
@@ -1290,6 +1317,8 @@ public:
 		}
 		
 		searcher->AddIterators(iters);
+		iter++;
+		searcher->SetParamsForCombine(iter);
 	}
 	
 	void RunWithInputParams()
