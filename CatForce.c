@@ -134,13 +134,13 @@ void CharToTransVec(char ch, std::vector<const int* >& trans)
 		
 	if(ch == '|')
 	{
-		trans.push_back(flipX);
+		trans.push_back(flipY);
 		return;
 	}
 	
 	if(ch == '-')
 	{
-		trans.push_back(flipY);
+		trans.push_back(flipX);
 		return;
 	}
 	
