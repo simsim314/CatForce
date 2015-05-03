@@ -70,9 +70,10 @@ rle - the rle of the catalyst
 max-gen-petrube - the maximal generations that a pattern can be idle. Transparent catalysts might be idle for longer periods.    
 (dx, dy) - Mandatory parameters to define the center of the catalyst.    
 symmetries-char - character that defines all symmetries the catalyst can be used. Currently supports:    
-| + / x *
+| + / x * -
 
 -  |   mirror by y.
+-  -   mirror by x.
 -  +   mirror by x, y and both. 
 -  /  diagonal mirror.
 -  x  make for 180 degree symmetrical catalysts.
