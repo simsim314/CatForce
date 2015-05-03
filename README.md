@@ -132,6 +132,7 @@ file name - specify file name for the full-report.
  
  **NOTE** See 4.in file for example. 
  
+ **NOTE** CatForce will use the last survive-x as the default from that point on. If you don't enter any numbers it will use survival count 1, and will filter only when finish all possible combinations.
  
   Compilation
 --
