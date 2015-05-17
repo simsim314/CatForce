@@ -99,6 +99,10 @@ rle - the pattern rle that should be present.
 
 (dx dy) - transform of the pattern (mandatory). 
 
+`filter min-max rle dx dy`
+
+min-max gen range added to filter. This filter is an option to have the rle in range of generations. If in all the range the requiered rle didn't appear then the filter will fail. 
+
 `fit-in-width-height width height`
 
 To optimize run time one can choose to check only catalysts bounded by some rectangle. That means if all catalysts centers fit inside rectangle of size (width, height) only then the validation would be made. 
