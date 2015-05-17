@@ -49,6 +49,8 @@ public:
 	std::vector<int> filterdx; 
 	std::vector<int> filterdy; 
 	std::vector<int> filterGen; 
+	std::vector<std::pair<int, int> > filterGenRange; 
+	
 	bool combineResults;
 	std::vector<int> combineSurvive; 
 	
@@ -272,7 +274,23 @@ void ReadParams(std::string fname, std::vector<CatalystInput>& catalysts, Search
 			
 			if(elems[0] == filter) 
 			{
-				params.filterGen.push_back(atoi(elems[1].c_str()));
+				std::vector<std::string> rangeElems;
+				split(elems[1], '-', rangeElems);
+				
+				if(rangeElems.size() == 1)
+				{
+					params.filterGen.push_back(atoi(elems[1].c_str()));
+					params.filterGenRange.push_back(std::pair<int, int>(-1, -1));
+				}
+				else
+				{
+					int minGen = atoi(rangeElems[0].c_str());
+					int maxGen = atoi(rangeElems[1].c_str());
+					
+					params.filterGen.push_back(-1);
+					params.filterGenRange.push_back(std::pair<int, int>(minGen, maxGen));
+				}	
+				
 				params.targetFilter.push_back(elems[2]);
 				params.filterdx.push_back(atoi(elems[3].c_str()));
 				params.filterdy.push_back(atoi(elems[4].c_str()));
@@ -872,6 +890,10 @@ public:
 		{
 			if(params.filterGen[j] > maxGen)
 				maxGen = params.filterGen[j];
+				
+			if(params.filterGenRange[j].second > maxGen)
+				maxGen = params.filterGenRange[j].second;
+			
 		}
 		
 		return maxGen;
@@ -1116,16 +1138,29 @@ public:
 	
 	bool ValidateFilters(const int& maxFilterGen)
 	{
+		std::vector<bool> rangeValid(params.filterGen.size(), false);
+		
+		for(int k = 0; k < params.filterGen.size(); k++)
+			if(params.filterGen[k] >= 0)
+				rangeValid[k] = true;
+		
 		for(int j = 0; j <= maxFilterGen; j++)
 		{
 			for(int k = 0; k < params.filterGen.size(); k++)
 			{
 				if(GlobalState->gen == params.filterGen[k] && Contains(GlobalState, targetFilter[k]) == NO)
 					return false;
+					
+				if(params.filterGen[k] == -1 &&  params.filterGenRange[k].first <= GlobalState->gen && params.filterGenRange[k].second >= GlobalState->gen && Contains(GlobalState, targetFilter[k]) == YES)
+					rangeValid[k] = true;
 			}
 			
 			Run(1);
 		}
+		
+		for(int k = 0; k < params.filterGen.size(); k++)
+			if(!rangeValid[k])
+				return false;
 		
 		return true;
 	}
