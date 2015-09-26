@@ -39,6 +39,8 @@ CatForce will never iterate after max-gen.
 
 The first gen encounter is allowed. 
 
+**NOTE** Encounter - defined as active cell from the input pattern is present in the immediate neighborhood of the catalyst.
+
 `last-gen`
 
 The last gen to wait for some encounter. If no encounter had occured after last-gen the search will move on. 
