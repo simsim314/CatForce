@@ -479,6 +479,17 @@ std::string GetRLE(const std::vector<std::vector<int> >& life2d)
 
             eol_count++;
 	}
+	
+	// Flush trailing linefeeds
+	if(eol_count > 0)
+	{
+		if(eol_count > 1)
+			result << eol_count;
+
+		result << "$";
+
+		eol_count = 0;
+	}
         
 	return result.str();
 }
@@ -744,11 +755,9 @@ public:
 	std::string CategoriesRLE()
 	{
 		std::stringstream ss;
-		//Size of LifeState 64x64 + 35 for extra margin. 
 		for(int i = 0; i < categories.size(); i++)
 		{
 			ss << categories[i]->RLE();
-			ss << "44$";
 		}
 		
 		return ss.str();
